@@ -1,7 +1,7 @@
 // src/components/screens/BloodBankReg.jsx
 import { useState } from "react";
 import { C } from "../../tokens";
-import { Card, Field, SectionTitle } from "../shared/UI";
+import { Card, Field } from "../shared/UI";
 import { districts, getDHOsForDistrict, submitRegistration } from "../../data/orgStore";
 
 const EMPTY_FORM = {
@@ -83,9 +83,14 @@ export default function BloodBankReg() {
 
   return (
     <Card style={{ maxWidth: 560, margin: "0 auto", padding: 28 }}>
-      <SectionTitle sub="Creates a pending account — a DHO must approve it before you can sign in">
-        Register Your Blood Bank
-      </SectionTitle>
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: C.navy, marginBottom: 4 }}>
+          Register Your Blood Bank
+        </div>
+        <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.5 }}>
+          We'll verify your license and get you access within 1–2 business days.
+        </div>
+      </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <Field label="Officer full name" name="officerName" value={form.officerName} onChange={update} error={errors.officerName} required />
