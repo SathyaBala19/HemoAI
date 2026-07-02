@@ -18,9 +18,12 @@ export const districts = [
 
 // Facilities (hospitals / blood banks) — created when their admin registers,
 // but the facility itself isn't "live" until approved.
+// parentHospitalId: null means the facility is standalone (registered independently,
+// approved by a DHO). If set, it's a blood bank run inside that hospital,
+// added directly by the Hospital Admin — no DHO approval needed for that path.
 export const facilities = [
-  { id: "f1", type: "hospital",  name: "City General Hospital", district: "d1", licenseNo: "TN-HOS-2291", status: ACCOUNT_STATUS.APPROVED },
-  { id: "f2", type: "bloodbank", name: "Coimbatore Central Blood Bank", district: "d1", licenseNo: "TN-BB-0417", status: ACCOUNT_STATUS.APPROVED },
+  { id: "f1", type: "hospital",  name: "City General Hospital", district: "d1", licenseNo: "TN-HOS-2291", status: ACCOUNT_STATUS.APPROVED, parentHospitalId: null },
+  { id: "f2", type: "bloodbank", name: "Coimbatore Central Blood Bank", district: "d1", licenseNo: "TN-BB-0417", status: ACCOUNT_STATUS.APPROVED, parentHospitalId: null },
 ];
 
 // Users — every non-donor user has reportsTo pointing at the account
@@ -95,6 +98,7 @@ export function submitRegistration({ name, email, role, district, facilityName, 
       district,
       licenseNo,
       status: ACCOUNT_STATUS.PENDING,
+      parentHospitalId: null, // standalone facility, goes through normal DHO approval
     });
   }
 
@@ -110,6 +114,54 @@ export function submitRegistration({ name, email, role, district, facilityName, 
   };
   users.push(newUser);
   return newUser;
+}
+
+// Hospital Admin adding their own staff directly — no DHO approval needed
+// because the Hospital Admin is already an approved, trusted account.
+// This covers hospital-run blood banks (a department inside the hospital),
+// as opposed to standalone blood banks which go through submitRegistration + DHO approval.
+export function addHospitalStaff({ name, email, hospitalAdminId }) {
+  const admin = users.find(u => u.id === hospitalAdminId);
+  if (!admin || admin.role !== "Hospital Admin") {
+    throw new Error("Only an approved Hospital Admin can add staff directly");
+  }
+
+  const hospitalFacility = facilities.find(f => f.id === admin.facilityId);
+
+  // Find or create a blood bank facility owned by this hospital
+  let bloodBankFacility = facilities.find(
+    f => f.type === "bloodbank" && f.parentHospitalId === hospitalFacility.id
+  );
+  if (!bloodBankFacility) {
+    bloodBankFacility = {
+      id: `f_${Date.now()}`,
+      type: "bloodbank",
+      name: `${hospitalFacility.name} Blood Bank`,
+      district: hospitalFacility.district,
+      licenseNo: hospitalFacility.licenseNo, // shares the hospital's license — it's a department, not a separate legal entity
+      status: ACCOUNT_STATUS.APPROVED,
+      parentHospitalId: hospitalFacility.id,
+    };
+    facilities.push(bloodBankFacility);
+  }
+
+  const newUser = {
+    id: `u_${Date.now()}`,
+    name,
+    email,
+    role: "Blood Bank Officer",
+    district: admin.district,
+    facilityId: bloodBankFacility.id,
+    reportsTo: hospitalAdminId, // reports to the hospital admin, not a DHO
+    status: ACCOUNT_STATUS.APPROVED, // immediate — hospital admin already vouched for them
+    addedByHospital: true,
+  };
+  users.push(newUser);
+  return newUser;
+}
+
+export function getStaffForHospitalAdmin(hospitalAdminId) {
+  return users.filter(u => u.reportsTo === hospitalAdminId && u.addedByHospital);
 }
 
 export function approveUser(userId) {

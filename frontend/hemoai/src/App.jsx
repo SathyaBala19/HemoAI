@@ -1,3 +1,4 @@
+// src/App.jsx
 import { useState } from "react";
 import { Routes, Route, Navigate, useNavigate, useParams } from "react-router-dom";
 import { C } from "./tokens";
@@ -19,6 +20,11 @@ import DHO from "./components/screens/DHO";
 import DonorProfile from "./components/screens/DonorProfile";
 import DonationHistory from "./components/screens/DonationHistory";
 import Certificate from "./components/screens/Certificate";
+import HospitalReg from "./components/screens/HospitalReg";
+import BloodBankReg from "./components/screens/BloodBankReg";
+import DHOReg from "./components/screens/DHOReg";
+import PendingApprovals from "./components/screens/PendingApprovals";
+import StaffManagement from "./components/screens/StaffManagement";
 
 const SCREEN_COMPONENTS = {
   dashboard:       Dashboard,
@@ -31,6 +37,8 @@ const SCREEN_COMPONENTS = {
   donorreg:        DonorReg,
   bloodbank:       BloodBank,
   dho:             DHO,
+  approvals:       PendingApprovals,
+  staff:           StaffManagement,
   donorprofile:    DonorProfile,
   donationhistory: DonationHistory,
   certificate:     Certificate,
@@ -59,8 +67,18 @@ function LoginRoute({ onLogin }) {
   );
 }
 
+const REGISTER_TABS = [
+  { key: "donor",     label: "Donor",              component: DonorReg,     hint: "Instant — start donating right away" },
+  { key: "hospital",  label: "Hospital Admin",     component: HospitalReg,  hint: "Requires DHO approval" },
+  { key: "bloodbank", label: "Blood Bank Officer", component: BloodBankReg, hint: "Requires DHO approval" },
+  { key: "dho",       label: "District Health Officer", component: DHOReg,  hint: "Requires State Health Dept approval" },
+];
+
 function PublicRegisterRoute() {
   const navigate = useNavigate();
+  const [tab, setTab] = useState("donor");
+  const ActiveForm = REGISTER_TABS.find(t => t.key === tab).component;
+
   return (
     <div style={{ minHeight: "100vh", background: "#F2F3F6", fontFamily: "'Roboto', sans-serif" }}>
       <div style={{
@@ -75,8 +93,29 @@ function PublicRegisterRoute() {
           Already have an account? Sign in →
         </span>
       </div>
-      <div style={{ padding: 24, maxWidth: 1100, margin: "0 auto" }}>
-        <DonorReg />
+
+      <div style={{ padding: "24px 24px 0", maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+          {REGISTER_TABS.map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              style={{
+                padding: "9px 16px", borderRadius: 9, cursor: "pointer",
+                border: `1.5px solid ${tab === t.key ? C.red700 : C.border}`,
+                background: tab === t.key ? "#FFF5F6" : C.white,
+                display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2,
+              }}
+            >
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: tab === t.key ? C.navy : C.slate }}>{t.label}</span>
+              <span style={{ fontSize: 10, color: C.gray }}>{t.hint}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ padding: "0 24px 24px", maxWidth: 1100, margin: "0 auto" }}>
+        <ActiveForm />
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+// src/roles.js
 // Role definitions — controls nav, home screen, and user info shown in sidebar/topbar
 
 export const ROLES = {
@@ -14,6 +15,7 @@ export const ROLES = {
       { key: "alerts",     label: "Alerts",          abbr: "A" },
       { key: "reports",    label: "Reports",         abbr: "R" },
       { key: "donorreg",   label: "Donor Registration", abbr: "+" },
+      { key: "staff",      label: "Blood Bank Staff", abbr: "S" },
     ],
     donorNav: [],
   },
@@ -38,12 +40,13 @@ export const ROLES = {
     home: "dho",
     user: { initials: "PS", name: "P. Selvam",      role: "District Health Officer" },
     mainNav: [
-      { key: "dho",        label: "DHO Dashboard",    abbr: "D" },
-      { key: "inventory",  label: "Blood Inventory",  abbr: "I" },
-      { key: "forecast",   label: "AI Forecast",      abbr: "F" },
-      { key: "alerts",     label: "Alerts",           abbr: "A" },
-      { key: "reports",    label: "Reports",          abbr: "R" },
-      { key: "chatbot",    label: "AI Chatbot",       abbr: "C" },
+      { key: "dho",        label: "DHO Dashboard",     abbr: "D" },
+      { key: "approvals",  label: "Pending Approvals", abbr: "✓" },
+      { key: "inventory",  label: "Blood Inventory",   abbr: "I" },
+      { key: "forecast",   label: "AI Forecast",       abbr: "F" },
+      { key: "alerts",     label: "Alerts",            abbr: "A" },
+      { key: "reports",    label: "Reports",           abbr: "R" },
+      { key: "chatbot",    label: "AI Chatbot",        abbr: "C" },
     ],
     donorNav: [],
   },
@@ -74,6 +77,8 @@ export const SCREEN_META = {
   donorreg:        { title: "Donor Registration",              subtitle: "Register new donors with blood group, location and health history" },
   bloodbank:       { title: "Blood Bank Officer Dashboard",    subtitle: "Manage incoming requests, update stock and track donor availability" },
   dho:             { title: "District Health Officer Dashboard", subtitle: "District-wide blood supply · Coimbatore District" },
+  approvals:       { title: "Pending Approvals",               subtitle: "Review and approve new hospital, blood bank and DHO registrations" },
+  staff:           { title: "Blood Bank Staff",                subtitle: "Give your hospital staff access to run your blood bank" },
   donorprofile:    { title: "My Donor Profile",                subtitle: "Your personal blood donation profile and achievements" },
   donationhistory: { title: "Donation History",                subtitle: "Track your full donation journey and impact" },
   certificate:     { title: "Donation Certificate",            subtitle: "Official blood donation certificate — shareable and downloadable" },

@@ -103,7 +103,7 @@ export default function Landing({ onGetStarted, onSignIn }) {
               onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}
             >
-              Register as a donor
+              Register / Get Started
             </button>
           </div>
 
