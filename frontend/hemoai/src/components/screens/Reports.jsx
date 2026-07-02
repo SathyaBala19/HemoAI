@@ -1,5 +1,8 @@
+// src/components/screens/Reports.jsx
+import { useState } from "react";
 import { C } from "../../tokens";
 import { KPICard, BarChart, LineChart, DataTable, Card, SectionTitle } from "../shared/UI";
+import Pagination from "../shared/Pagination";
 
 const donorRows = [
   ["Arjun Kumar",   "O−",  "12", "14 Jun 2026", "Active"],
@@ -7,9 +10,21 @@ const donorRows = [
   ["Karthik Rajan", "B+",  "5",  "28 May 2026", "Inactive"],
   ["Meena Devi",    "O+",  "15", "17 Jun 2026", "Active"],
   ["Suresh Babu",   "AB−", "3",  "22 Apr 2026", "Inactive"],
+  ["Divya Prakash", "A−",  "9",  "02 Jun 2026", "Active"],
+  ["Ganesh Iyer",   "B−",  "6",  "19 May 2026", "Active"],
+  ["Lakshmi Narayanan", "O+", "11", "30 May 2026", "Active"],
+  ["Vijay Anand",   "AB+", "4",  "15 Apr 2026", "Inactive"],
+  ["Kavya Sundaram","O−",  "13", "21 Jun 2026", "Active"],
+  ["Ramesh Chandran","A+", "7",  "08 Jun 2026", "Active"],
+  ["Anitha Raj",    "B+",  "2",  "11 Mar 2026", "Inactive"],
 ];
 
+const PAGE_SIZE = 5;
+
 export default function Reports() {
+  const [page, setPage] = useState(1);
+  const pageRows = donorRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div style={{ display: "flex", gap: 12 }}>
@@ -43,7 +58,8 @@ export default function Reports() {
 
       <Card style={{ padding: "18px 20px" }}>
         <SectionTitle>Top donors this period</SectionTitle>
-        <DataTable headers={["Name", "Group", "Donations", "Last donated", "Status"]} rows={donorRows} />
+        <DataTable headers={["Name", "Group", "Donations", "Last donated", "Status"]} rows={pageRows} />
+        <Pagination page={page} totalItems={donorRows.length} pageSize={PAGE_SIZE} onPageChange={setPage} />
       </Card>
     </div>
   );
