@@ -1,5 +1,7 @@
+// src/components/screens/Login.jsx
 import { useState } from "react";
 import { C } from "../../tokens";
+import { findUserByEmail } from "../../data/orgStore";
 
 const roles = ["Hospital Admin", "Blood Bank Officer", "DHO", "Donor"];
 
@@ -137,17 +139,48 @@ function ForgotPasswordCard({ onBack }) {
   );
 }
 
+// Status-specific banners shown when an account exists but can't sign in yet.
+function StatusBanner({ status, reason }) {
+  const map = {
+    pending: {
+      bg: C.amber50, fg: C.amber,
+      title: "Account pending approval",
+      body: "Your registration is still being reviewed by your District Health Officer. You'll get an email once it's approved.",
+    },
+    rejected: {
+      bg: C.red50, fg: C.red700,
+      title: "Registration was rejected",
+      body: reason ? `Reason: ${reason}` : "Contact your District Health Officer for details.",
+    },
+    suspended: {
+      bg: C.red50, fg: C.red700,
+      title: "Account suspended",
+      body: "Your access has been suspended. Contact your administrator to resolve this.",
+    },
+  };
+  const cfg = map[status];
+  if (!cfg) return null;
+  return (
+    <div style={{ background: cfg.bg, border: `1px solid ${cfg.fg}30`, borderLeft: `3px solid ${cfg.fg}`, borderRadius: "0 8px 8px 0", padding: "10px 12px", marginBottom: 16 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: cfg.fg, marginBottom: 2 }}>{cfg.title}</div>
+      <div style={{ fontSize: 11, color: C.slate, lineHeight: 1.5 }}>{cfg.body}</div>
+    </div>
+  );
+}
+
 export default function Login({ onLogin }) {
   const [role, setRole] = useState("Hospital Admin");
   const [email, setEmail] = useState(roleEmails["Hospital Admin"]);
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({});
   const [view, setView] = useState("signin"); // "signin" | "forgot"
+  const [blocked, setBlocked] = useState(null); // { status, reason } | null
 
   function selectRole(r) {
     setRole(r);
     setEmail(roleEmails[r]);
     setErrors({});
+    setBlocked(null);
   }
 
   function submit() {
@@ -156,7 +189,29 @@ export default function Login({ onLogin }) {
     else if (!EMAIL_RE.test(email.trim())) errs.email = "Enter a valid email address";
     if (!password.trim()) errs.password = "Password is required";
     setErrors(errs);
-    if (Object.keys(errs).length === 0) onLogin(role);
+    setBlocked(null);
+    if (Object.keys(errs).length > 0) return;
+
+    // Real status check: donors are frictionless, staff roles must be
+    // an approved account tied to that exact email before they get in.
+    if (role !== "Donor") {
+      const account = findUserByEmail(email.trim());
+
+      if (!account) {
+        setErrors({ email: "No account found for this email. Register first." });
+        return;
+      }
+      if (account.role !== role) {
+        setErrors({ email: `This email is registered as ${account.role}, not ${role}.` });
+        return;
+      }
+      if (account.status !== "approved") {
+        setBlocked({ status: account.status, reason: account.rejectionReason });
+        return;
+      }
+    }
+
+    onLogin(role);
   }
 
   return (
@@ -190,10 +245,12 @@ export default function Login({ onLogin }) {
             ))}
           </div>
 
+          {blocked && <StatusBanner status={blocked.status} reason={blocked.reason} />}
+
           <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: C.slate, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em" }}>Email</label>
           <input
             value={email}
-            onChange={e => { setEmail(e.target.value); if (errors.email) setErrors(er => ({ ...er, email: undefined })); }}
+            onChange={e => { setEmail(e.target.value); if (errors.email) setErrors(er => ({ ...er, email: undefined })); setBlocked(null); }}
             style={{ width: "100%", height: 38, borderRadius: 7, border: `1.5px solid ${errors.email ? C.red700 : C.border}`, background: C.fog, padding: "0 12px", fontSize: 12.5, color: C.navy, outline: "none", boxSizing: "border-box", marginBottom: errors.email ? 4 : 14 }}
           />
           {errors.email && <div style={{ fontSize: 10.5, color: C.red700, marginBottom: 10 }}>{errors.email}</div>}
