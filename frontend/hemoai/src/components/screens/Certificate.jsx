@@ -89,12 +89,28 @@ export default function Certificate() {
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
         <Card style={{ padding: "16px 18px" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.slate, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 13 }}>Share or download</div>
-          {[["Download PDF", C.red700],["Share via WhatsApp", C.green],["Send by email", C.blue],["Add to LinkedIn", "#0A66C2"]].map(([lbl, col]) => (
-            <button key={lbl} style={{ width: "100%", height: 38, borderRadius: 8, cursor: "pointer", background: `${col}10`, border: `1px solid ${col}44`, color: col, fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center", gap: 9, padding: "0 14px", marginBottom: 7 }}>
+          {[
+            ["Download PDF", C.red700, () => window.print()],
+            ["Share via WhatsApp", C.green, () => window.open(
+              `https://wa.me/?text=${encodeURIComponent(`I donated blood on ${d.date} at ${d.hosp} — certificate ${d.id}, via HemoAI.`)}`,
+              "_blank"
+            )],
+            ["Send by email", C.blue, () => {
+              window.location.href = `mailto:?subject=${encodeURIComponent(`HemoAI donation certificate ${d.id}`)}&body=${encodeURIComponent(`Certificate ${d.id} for a blood donation on ${d.date} at ${d.hosp}.`)}`;
+            }],
+            ["Add to LinkedIn", "#0A66C2", () => window.open(
+              `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`,
+              "_blank"
+            )],
+          ].map(([lbl, col, onClick]) => (
+            <button key={lbl} type="button" onClick={onClick} style={{ width: "100%", height: 38, borderRadius: 8, cursor: "pointer", background: `${col}10`, border: `1px solid ${col}44`, color: col, fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center", gap: 9, padding: "0 14px", marginBottom: 7 }}>
               <div style={{ width: 7, height: 7, borderRadius: "50%", background: col, flexShrink: 0 }} />
               {lbl}
             </button>
           ))}
+          <div style={{ fontSize: 9.5, color: C.gray, marginTop: 2, lineHeight: 1.4 }}>
+            "Download PDF" opens your browser's print dialog — choose "Save as PDF" as the destination.
+          </div>
         </Card>
 
         <Card style={{ padding: "16px 18px" }}>
