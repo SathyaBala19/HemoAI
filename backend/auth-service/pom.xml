@@ -11,7 +11,11 @@
         <relativePath/>
     </parent>
 
+<<<<<<< HEAD
     <groupId>com.kce.auth</groupId>
+=======
+    <groupId>com.auth</groupId>
+>>>>>>> d443f13996365e28c56f7f856e51bfdb693e1717
     <artifactId>auth-service</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
