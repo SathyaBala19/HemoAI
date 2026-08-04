@@ -1,117 +1,127 @@
 // src/components/screens/PendingApprovals.jsx
-import { useState, useMemo } from "react";
+//
+// Real data from auth-service: GET /api/users/pending lists staff
+// accounts (HOSPITAL_ADMIN, BLOOD_BANK_OFFICER, DHO) still waiting on a
+// decision, and Approve/Reject call POST /api/users/:id/approve or
+// /reject. All three endpoints are DHO-only on the backend - see
+// AccountApprovalController.
+import { useEffect, useState } from "react";
 import { C } from "../../tokens";
 import { Card, SectionTitle, StatusPill } from "../shared/UI";
 import Pagination from "../shared/Pagination";
-import {
-  users, districts, facilities,
-  getPendingApprovals, approveUser, rejectUser,
-} from "../../data/orgStore";
+import { listPendingApprovals, approveAccount, rejectAccount, getToken, getStoredUser } from "../../api";
 
 const PAGE_SIZE = 5;
 
-// currentUser would normally come from auth/session context — hardcoded here
-// to match the rest of the mock-role pattern in roles.js
-function useCurrentApprover() {
-  return users.find(u => u.role === "DHO") || users.find(u => u.role === "SuperAdmin");
-}
-
-function districtName(id) {
-  return districts.find(d => d.id === id)?.name || "—";
-}
-
-function facilityFor(user) {
-  return facilities.find(f => f.id === user.facilityId);
-}
-
 export default function PendingApprovals() {
-  const approver = useCurrentApprover();
+  const token = getToken();
+  const approver = getStoredUser();
+
+  const [pending, setPending] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [page, setPage] = useState(1);
-  const [rejecting, setRejecting] = useState(null); // userId currently being rejected
+  const [rejecting, setRejecting] = useState(null); // account id currently being rejected
   const [reason, setReason] = useState("");
-  const [, forceRefresh] = useState(0); // mock store mutates in place — bump this to re-render
 
-  const pending = useMemo(
-    () => getPendingApprovals(approver.id),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [approver.id, forceRefresh]
-  );
-
-  const totalPages = Math.max(1, Math.ceil(pending.length / PAGE_SIZE));
-  const pageItems = pending.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  function handleApprove(userId) {
-    approveUser(userId);
-    forceRefresh(n => n + 1);
-    // clamp page if this was the last item on the current page
-    setPage(p => Math.min(p, Math.max(1, Math.ceil((pending.length - 1) / PAGE_SIZE))));
+  function load() {
+    if (!token) {
+      setError("You're not signed in. Please log in again.");
+      setLoading(false);
+      return;
+    }
+    listPendingApprovals(token)
+      .then(data => setPending(data))
+      .catch(err => setError(err.message || "Could not load pending approvals"))
+      .finally(() => setLoading(false));
   }
 
-  function openReject(userId) {
-    setRejecting(userId);
+  useEffect(load, [token]);
+
+  const pageItems = pending.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  async function handleApprove(id) {
+    try {
+      await approveAccount(token, id);
+      setPending(list => list.filter(u => u.id !== id));
+    } catch (err) {
+      setError(err.message || "Could not approve that account");
+    }
+  }
+
+  function openReject(id) {
+    setRejecting(id);
     setReason("");
   }
 
-  function confirmReject() {
-    rejectUser(rejecting, reason.trim() || "Not specified");
-    setRejecting(null);
-    forceRefresh(n => n + 1);
-    setPage(p => Math.min(p, Math.max(1, Math.ceil((pending.length - 1) / PAGE_SIZE))));
+  async function confirmReject() {
+    try {
+      await rejectAccount(token, rejecting, reason.trim() || "Not specified");
+      setPending(list => list.filter(u => u.id !== rejecting));
+      setRejecting(null);
+    } catch (err) {
+      setError(err.message || "Could not reject that account");
+    }
   }
 
   return (
     <div style={{ maxWidth: 760, margin: "0 auto" }}>
       <Card style={{ padding: 24 }}>
-        <SectionTitle sub={`Reviewing as ${approver.name} (${approver.role})`}>
+        <SectionTitle sub={approver ? `Reviewing as ${approver.name} (${approver.role})` : ""}>
           Pending Approvals
         </SectionTitle>
 
-        {pending.length === 0 ? (
+        {error && (
+          <div style={{ fontSize: 11.5, color: C.red700, background: C.red50, borderRadius: 7, padding: "8px 12px", marginBottom: 12 }}>
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div style={{ padding: "40px 0", textAlign: "center", color: C.gray, fontSize: 12.5 }}>Loading…</div>
+        ) : pending.length === 0 ? (
           <div style={{ padding: "40px 0", textAlign: "center", color: C.gray, fontSize: 12.5 }}>
             No pending registrations right now.
           </div>
         ) : (
           <>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {pageItems.map(u => {
-                const fac = facilityFor(u);
-                return (
-                  <div key={u.id} style={{
-                    border: `1px solid ${C.border}`, borderRadius: 10, padding: "14px 16px",
-                    display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12,
-                  }}>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>{u.name}</span>
-                        <StatusPill value="Pending" />
-                        <span style={{ fontSize: 10.5, fontWeight: 600, color: C.blue, background: C.blue50, borderRadius: 5, padding: "2px 8px" }}>
-                          {u.role}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 11.5, color: C.gray, lineHeight: 1.6 }}>
-                        {u.email} · {districtName(u.district)}
-                        {fac && <> · {fac.name} <span style={{ color: C.slate }}>(License: {fac.licenseNo})</span></>}
-                        {!fac && u.licenseNo && <> · Employee ID: {u.licenseNo}</>}
-                      </div>
+              {pageItems.map(u => (
+                <div key={u.id} style={{
+                  border: `1px solid ${C.border}`, borderRadius: 10, padding: "14px 16px",
+                  display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12,
+                }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>{u.name}</span>
+                      <StatusPill value="Pending" />
+                      <span style={{ fontSize: 10.5, fontWeight: 600, color: C.blue, background: C.blue50, borderRadius: 5, padding: "2px 8px" }}>
+                        {u.role}
+                      </span>
                     </div>
-
-                    <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                      <button
-                        onClick={() => handleApprove(u.id)}
-                        style={{ height: 32, padding: "0 14px", background: C.green, color: C.white, border: "none", borderRadius: 7, fontSize: 11.5, fontWeight: 700, cursor: "pointer" }}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => openReject(u.id)}
-                        style={{ height: 32, padding: "0 14px", background: C.white, color: C.red700, border: `1px solid ${C.red700}`, borderRadius: 7, fontSize: 11.5, fontWeight: 700, cursor: "pointer" }}
-                      >
-                        Reject
-                      </button>
+                    <div style={{ fontSize: 11.5, color: C.gray, lineHeight: 1.6 }}>
+                      {u.email}
+                      {u.city && <> · {u.city}{u.state ? `, ${u.state}` : ""}</>}
+                      {u.createdAt && <> · Registered {new Date(u.createdAt).toLocaleDateString()}</>}
                     </div>
                   </div>
-                );
-              })}
+
+                  <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                    <button
+                      onClick={() => handleApprove(u.id)}
+                      style={{ height: 32, padding: "0 14px", background: C.green, color: C.white, border: "none", borderRadius: 7, fontSize: 11.5, fontWeight: 700, cursor: "pointer" }}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => openReject(u.id)}
+                      style={{ height: 32, padding: "0 14px", background: C.white, color: C.red700, border: `1px solid ${C.red700}`, borderRadius: 7, fontSize: 11.5, fontWeight: 700, cursor: "pointer" }}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
 
             <Pagination

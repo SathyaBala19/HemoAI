@@ -1,65 +1,91 @@
+// src/components/screens/Chatbot.jsx
+//
+// Real chat, backed by chatbot-service (port 8085), which forwards
+// messages to a LOCAL Ollama server (https://ollama.com) running on
+// your machine - no cloud AI service involved. Requires Ollama to
+// actually be running ("ollama serve") with a model pulled - see
+// backend/chatbot-service/src/main/resources/application.properties
+// for which model it expects.
+//
+// The sidebar stats are real too: donors see their own donation count
+// (from donation-service), staff see live low-stock groups (from
+// inventory-service) - same data the Donor Profile / Inventory screens use.
 import { useState, useRef, useEffect } from "react";
 import { C } from "../../tokens";
 import { Card } from "../shared/UI";
+import { sendChatMessage, listMyDonations, listInventory, getToken, getStoredUser } from "../../api";
 
-const systemCtx = {
-  "Hospital Admin":     "a hospital admin managing blood inventory, staff, and requests",
-  "Blood Bank Officer": "a blood bank officer handling requests and stock",
-  "DHO":                "a district health officer overseeing regional supply",
-  "Donor":              "a blood donor",
+const roleLabels = {
+  HOSPITAL_ADMIN: "hospital admin mode",
+  BLOOD_BANK_OFFICER: "blood bank officer mode",
+  DHO: "DHO mode",
+  DONOR: "donor mode",
 };
 
-const initMsgs = {
-  admin: [
-    { text: "Hi! I can help with stock queries, donor matching, and demand forecasts. What do you need?", user: false },
-    { text: "What's the current O− stock?", user: true },
-    { text: "O− is at 12 units — that's critical. Today's predicted demand is 9 units, so you have roughly 1.3 days of cover. I'd recommend sending donor alerts now. Want me to trigger SMS to the 4 eligible donors within 5 km?", user: false },
-    { text: "Yes, go ahead.", user: true },
-    { text: "Done. SMS sent to Arjun Kumar, Meena Devi, Priya Sharma, and one more. Estimated first response in ~18 minutes. I'll let you know when someone confirms.", user: false },
-  ],
-  donor: [
-    { text: "Hi Arjun! I can help you track donations, check eligibility, or find nearby donation camps. What's up?", user: false },
-    { text: "When can I donate next?", user: true },
-    { text: "Your last donation was June 14, 2026. You need 90 days between whole blood donations, so you're eligible again from September 12, 2026 — that's about 76 days away. Want me to set a reminder?", user: false },
-  ],
-};
-
-const quickAdmin = ["Check O− stock", "Find donors within 5 km", "What's today's forecast?", "Any critical alerts?"];
-const quickDonor = ["When can I donate again?", "Find camps near me", "How many lives have I saved?", "Am I eligible right now?"];
-
-const ctxAdmin = [
-  { label: "Critical stocks",  val: "O−, B−, AB−", col: C.red700 },
-  { label: "Open requests",    val: "7 pending",    col: C.amber },
-  { label: "Donors alerted",   val: "4 today",      col: C.green },
-  { label: "Weekend forecast", val: "+28% demand",  col: C.blue },
-];
-const ctxDonor = [
-  { label: "Blood type",       val: "O+",            col: C.red700 },
-  { label: "Donations",        val: "12 total",       col: C.green },
-  { label: "Next eligible",    val: "Sep 12, 2026",  col: C.amber },
-  { label: "Lives impacted",   val: "~48",           col: C.blue },
-];
+const quickStaff = ["What blood groups are below threshold right now?", "How do I add a new employee?", "What can this app track for donations?"];
+const quickDonor = ["When can I donate again?", "How do I log a donation?", "Where can I find my certificate?"];
 
 export default function Chatbot({ role }) {
-  const isDonor = role === "Donor";
-  const [msgs, setMsgs] = useState(isDonor ? initMsgs.donor : initMsgs.admin);
+  const token = getToken();
+  const currentUser = getStoredUser();
+  const isDonor = currentUser?.role === "DONOR";
+
+  const [messages, setMessages] = useState([]); // [{role: "user"|"assistant", content}]
   const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
   const bottomRef = useRef(null);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+  const [sidebarStats, setSidebarStats] = useState([]);
 
-  function send(text) {
-    const t = text || input;
-    if (!t.trim()) return;
-    setMsgs(m => [...m, { text: t, user: true }]);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  // Load real sidebar data once - donor: their own donation count; staff:
+  // which blood groups are currently below their minimum threshold.
+  useEffect(() => {
+    if (!token) return;
+    if (isDonor) {
+      listMyDonations(token)
+        .then(donations => setSidebarStats([
+          { label: "Blood group", val: donations[0]?.bloodGroup || "—", col: C.red700 },
+          { label: "Total donations", val: String(donations.length), col: C.green },
+          { label: "Last donated", val: donations[0]?.donationDate || "None yet", col: C.blue },
+        ]))
+        .catch(() => setSidebarStats([]));
+    } else {
+      listInventory(token)
+        .then(rows => {
+          const below = rows.filter(r => r.units < r.minimumThreshold);
+          setSidebarStats([
+            { label: "Blood groups tracked", val: String(rows.length), col: C.blue },
+            { label: "Below threshold", val: String(below.length), col: C.red700 },
+            { label: "Needs attention", val: below.map(r => r.bloodGroup).join(", ") || "None", col: C.amber },
+          ]);
+        })
+        .catch(() => setSidebarStats([]));
+    }
+  }, [token, isDonor]);
+
+  async function send(text) {
+    const content = (text || input).trim();
+    if (!content || sending) return;
+
+    const nextMessages = [...messages, { role: "user", content }];
+    setMessages(nextMessages);
     setInput("");
-    setTimeout(() => {
-      setMsgs(m => [...m, { text: "Connect to the HemoAI backend API to get live responses here.", user: false }]);
-    }, 700);
+    setError("");
+    setSending(true);
+    try {
+      const reply = await sendChatMessage(token, nextMessages);
+      setMessages(m => [...m, { role: "assistant", content: reply }]);
+    } catch (err) {
+      setError(err.message || "Could not reach the chatbot");
+    } finally {
+      setSending(false);
+    }
   }
 
-  const ctx   = isDonor ? ctxDonor  : ctxAdmin;
-  const quick = isDonor ? quickDonor : quickAdmin;
+  const quick = isDonor ? quickDonor : quickStaff;
 
   return (
     <div style={{ display: "flex", gap: 14, height: "calc(100vh - 114px)", minHeight: 460 }}>
@@ -69,26 +95,36 @@ export default function Chatbot({ role }) {
           <div style={{ width: 34, height: 34, borderRadius: "50%", background: C.red700, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: C.white, flexShrink: 0 }}>AI</div>
           <div>
             <div style={{ fontSize: 13, fontWeight: 600, color: C.navy }}>HemoAI Assistant</div>
-            <div style={{ fontSize: 10, color: C.green, display: "flex", alignItems: "center", gap: 4 }}>
-              <div style={{ width: 5, height: 5, borderRadius: "50%", background: C.green }} />
-              Online · {systemCtx[role] || "general mode"}
+            <div style={{ fontSize: 10, color: C.gray }}>
+              Runs on your local Ollama · {roleLabels[currentUser?.role] || "general mode"}
             </div>
           </div>
         </div>
 
         {/* Messages */}
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-          {msgs.map((m, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: m.user ? "flex-end" : "flex-start" }}>
-              {!m.user && <div style={{ width: 26, height: 26, borderRadius: "50%", background: C.fog, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: C.slate, flexShrink: 0, marginRight: 7, alignSelf: "flex-start" }}>AI</div>}
+          {messages.length === 0 && (
+            <div style={{ fontSize: 12, color: C.gray, textAlign: "center", marginTop: 20 }}>
+              Ask a question to get started. Make sure Ollama is running locally (<code>ollama serve</code>).
+            </div>
+          )}
+          {messages.map((m, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+              {m.role !== "user" && <div style={{ width: 26, height: 26, borderRadius: "50%", background: C.fog, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: C.slate, flexShrink: 0, marginRight: 7, alignSelf: "flex-start" }}>AI</div>}
               <div style={{
-                maxWidth: "74%", padding: "9px 13px", borderRadius: m.user ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
-                background: m.user ? C.red700 : C.fog,
-                border: m.user ? "none" : `1px solid ${C.border}`,
-                fontSize: 12.5, color: m.user ? C.white : C.navy, lineHeight: 1.55,
-              }}>{m.text}</div>
+                maxWidth: "74%", padding: "9px 13px", borderRadius: m.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
+                background: m.role === "user" ? C.red700 : C.fog,
+                border: m.role === "user" ? "none" : `1px solid ${C.border}`,
+                fontSize: 12.5, color: m.role === "user" ? C.white : C.navy, lineHeight: 1.55, whiteSpace: "pre-wrap",
+              }}>{m.content}</div>
             </div>
           ))}
+          {sending && (
+            <div style={{ fontSize: 11.5, color: C.gray, fontStyle: "italic" }}>Thinking…</div>
+          )}
+          {error && (
+            <div style={{ fontSize: 11.5, color: C.red700, background: C.red50, borderRadius: 7, padding: "8px 12px" }}>{error}</div>
+          )}
           <div ref={bottomRef} />
         </div>
 
@@ -97,12 +133,14 @@ export default function Chatbot({ role }) {
           <input
             value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && send()}
-            placeholder={isDonor ? "Ask about your donations..." : "Ask about stock, donors, alerts..."}
+            placeholder={isDonor ? "Ask about your donations..." : "Ask about stock, staff, alerts..."}
             style={{ flex: 1, height: 40, borderRadius: 8, border: `1px solid ${C.border}`, background: C.fog, padding: "0 13px", fontSize: 12.5, color: C.navy, outline: "none" }}
             onFocus={e => e.target.style.borderColor = C.blue}
             onBlur={e => e.target.style.borderColor = C.border}
           />
-          <button onClick={() => send()} style={{ height: 40, padding: "0 18px", background: C.red700, color: C.white, border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Send</button>
+          <button onClick={() => send()} disabled={sending} style={{ height: 40, padding: "0 18px", background: C.red700, color: C.white, border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: sending ? "default" : "pointer", opacity: sending ? 0.7 : 1 }}>
+            {sending ? "…" : "Send"}
+          </button>
         </div>
       </div>
 
@@ -110,7 +148,9 @@ export default function Chatbot({ role }) {
       <div style={{ width: 240, display: "flex", flexDirection: "column", gap: 12 }}>
         <Card style={{ padding: "16px" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.slate, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>{isDonor ? "Your stats" : "At a glance"}</div>
-          {ctx.map((c, i) => (
+          {sidebarStats.length === 0 ? (
+            <div style={{ fontSize: 11, color: C.gray }}>Loading…</div>
+          ) : sidebarStats.map((c, i) => (
             <div key={i} style={{ marginBottom: 12 }}>
               <div style={{ fontSize: 10.5, color: C.gray }}>{c.label}</div>
               <div style={{ fontSize: 14, fontWeight: 700, color: c.col, marginTop: 2 }}>{c.val}</div>

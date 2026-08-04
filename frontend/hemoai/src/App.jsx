@@ -1,4 +1,9 @@
 // src/App.jsx
+//
+// This is the "brain" of the whole frontend - it decides which screen to
+// show based on the URL (using react-router-dom) and which role the user
+// logged in as. It doesn't talk to any backend yet - roleKey is just kept
+// in memory with useState, so refreshing the page logs you out.
 import { useState } from "react";
 import { Routes, Route, Navigate, useNavigate, useParams } from "react-router-dom";
 import { C } from "./tokens";
@@ -26,6 +31,8 @@ import DHOReg from "./components/screens/DHOReg";
 import PendingApprovals from "./components/screens/PendingApprovals";
 import StaffManagement from "./components/screens/StaffManagement";
 
+// Maps a screen "key" (used in the URL, like /app/dashboard) to the
+// actual React component that should be rendered for it.
 const SCREEN_COMPONENTS = {
   dashboard:       Dashboard,
   inventory:       Inventory,
@@ -44,6 +51,7 @@ const SCREEN_COMPONENTS = {
   certificate:     Certificate,
 };
 
+// Wraps the Landing (home) page and wires its buttons to real navigation.
 function LandingRoute() {
   const navigate = useNavigate();
   return (
@@ -54,6 +62,9 @@ function LandingRoute() {
   );
 }
 
+// Wraps the Login screen. When login succeeds, it saves the chosen role
+// (onLogin, which sets roleKey in the App component below) and redirects
+// the browser to that role's home screen.
 function LoginRoute({ onLogin }) {
   const navigate = useNavigate();
   return (
@@ -67,6 +78,8 @@ function LoginRoute({ onLogin }) {
   );
 }
 
+// The tabs shown on the public /register page - one per account type
+// someone can sign up as.
 const REGISTER_TABS = [
   { key: "donor",     label: "Donor",              component: DonorReg,     hint: "Instant — start donating right away" },
   { key: "hospital",  label: "Hospital Admin",     component: HospitalReg,  hint: "Requires DHO approval" },
@@ -74,6 +87,8 @@ const REGISTER_TABS = [
   { key: "dho",       label: "District Health Officer", component: DHOReg,  hint: "Requires State Health Dept approval" },
 ];
 
+// The public sign-up page (/register) - lets a visitor pick which kind
+// of account to create, then shows the matching registration form.
 function PublicRegisterRoute() {
   const navigate = useNavigate();
   const [tab, setTab] = useState("donor");
@@ -121,14 +136,20 @@ function PublicRegisterRoute() {
   );
 }
 
+// The main logged-in layout: sidebar + top bar + whichever screen is
+// currently selected. This is what renders for every /app/:page URL.
 function AppShell({ roleKey, onLogout }) {
-  const { page } = useParams();
+  const { page } = useParams(); // reads the ":page" part of the URL
   const navigate = useNavigate();
 
+  // Not logged in? Bounce back to the landing page.
   if (!roleKey) return <Navigate to="/" replace />;
 
   const roleDef = ROLES[roleKey];
 
+  // Only let the user land on a page that's actually in their role's nav
+  // menu - otherwise fall back to their home screen. This stops someone
+  // from typing a random URL and reaching a screen they shouldn't see.
   const allAllowed = [
     ...roleDef.mainNav.map(i => i.key),
     ...roleDef.donorNav.map(i => i.key),
@@ -179,6 +200,9 @@ function AppShell({ roleKey, onLogout }) {
   );
 }
 
+// The top-level component. It just declares the URL routes and which
+// component handles each one. roleKey holds "who is logged in right now"
+// - it's plain React state, so it resets whenever the page is refreshed.
 export default function App() {
   const [roleKey, setRoleKey] = useState(null);
 
@@ -188,6 +212,7 @@ export default function App() {
       <Route path="/login" element={<LoginRoute onLogin={setRoleKey} />} />
       <Route path="/register" element={<PublicRegisterRoute />} />
       <Route path="/app/:page" element={<AppShell roleKey={roleKey} onLogout={() => setRoleKey(null)} />} />
+      {/* Any URL that doesn't match the routes above sends the user home. */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

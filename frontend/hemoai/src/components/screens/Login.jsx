@@ -1,8 +1,21 @@
 // src/components/screens/Login.jsx
+//
+// This is the sign-in screen. It calls the REAL backend (auth-service,
+// POST /api/auth/login - see src/api.js) to check the email/password and
+// get back a JWT token. auth-service must be running on port 8081 for
+// this to work (start.bat in the project root starts it automatically).
+//
+// The 4 role "quick pick" buttons below are pre-filled with 4 demo
+// accounts that auth-service creates automatically on startup (see
+// DemoDataSeeder.java in backend/auth-service) - they all share the same
+// demo password, shown under the password field.
 import { useState } from "react";
 import { C } from "../../tokens";
-import { findUserByEmail } from "../../data/orgStore";
+import { loginUser, saveSession } from "../../api";
+import { BACKEND_ROLE_TO_DISPLAY } from "../../roles";
 
+// The four roles a user can sign in as. Each one leads to a different
+// dashboard (see roles.js for what each role can see/do).
 const roles = ["Hospital Admin", "Blood Bank Officer", "DHO", "Donor"];
 
 const roleHints = {
@@ -20,6 +33,10 @@ const roleEmails = {
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Must match DemoDataSeeder.DEMO_PASSWORD in backend/auth-service - shown
+// to the user as a hint so they know what to type for the demo accounts.
+const DEMO_PASSWORD = "Password123!";
 
 function BrandPanel() {
   return (
@@ -46,25 +63,16 @@ function BrandPanel() {
           <span style={{ color: C.red500 }}>bank management.</span>
         </h1>
         <p style={{ fontSize: 14, color: "#6B7290", marginTop: 16, lineHeight: 1.65, maxWidth: 380 }}>
-          Forecast shortages before they happen, match donors in minutes, and keep every hospital stocked — all from one dashboard.
+          Track blood stock in real time, log donations, and keep every hospital's inventory up to date — all from one dashboard.
         </p>
         <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
-          {[["ML Forecast", C.blue], ["Live Alerts", C.red700], ["Donor Match", C.green]].map(([l, col]) => (
+          {[["Live Inventory", C.blue], ["Stock Alerts", C.red700], ["Donor Directory", C.green]].map(([l, col]) => (
             <div key={l} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 7, background: `${col}18`, border: `1px solid ${col}30` }}>
               <div style={{ width: 5, height: 5, borderRadius: "50%", background: col }} />
               <span style={{ fontSize: 11, color: col, fontWeight: 500 }}>{l}</span>
             </div>
           ))}
         </div>
-      </div>
-
-      <div style={{ display: "flex", gap: 36, position: "relative" }}>
-        {[["2,847", "units tracked"], ["1,293", "registered donors"], ["94.3%", "forecast accuracy"]].map(([v, l]) => (
-          <div key={l}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: C.white, letterSpacing: "-0.5px" }}>{v}</div>
-            <div style={{ fontSize: 10.5, color: "#5C6480", marginTop: 3 }}>{l}</div>
-          </div>
-        ))}
       </div>
     </div>
   );
@@ -169,13 +177,19 @@ function StatusBanner({ status, reason }) {
 }
 
 export default function Login({ onLogin }) {
+  // Keeps track of everything typed into the form and which role tab
+  // is currently selected.
   const [role, setRole] = useState("Hospital Admin");
   const [email, setEmail] = useState(roleEmails["Hospital Admin"]);
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({});
   const [view, setView] = useState("signin"); // "signin" | "forgot"
-  const [blocked, setBlocked] = useState(null); // { status, reason } | null
+  // { status, reason } | null - set from a real 403 response when the
+  // account is PENDING or REJECTED (see AccountApprovalController on the
+  // backend and postJson()'s accountStatus/accountReason handling below).
+  const [blocked, setBlocked] = useState(null);
 
+  // Runs when the user clicks one of the role buttons ("I'm a...").
   function selectRole(r) {
     setRole(r);
     setEmail(roleEmails[r]);
@@ -183,7 +197,13 @@ export default function Login({ onLogin }) {
     setBlocked(null);
   }
 
-  function submit() {
+  // True while we're waiting for the backend to respond, so we can
+  // disable the button and avoid double-submits.
+  const [submitting, setSubmitting] = useState(false);
+
+  // Runs when the user clicks "Continue" to sign in.
+  async function submit() {
+    // Basic form validation before we even talk to the backend.
     const errs = {};
     if (!email.trim()) errs.email = "Email is required";
     else if (!EMAIL_RE.test(email.trim())) errs.email = "Enter a valid email address";
@@ -192,26 +212,33 @@ export default function Login({ onLogin }) {
     setBlocked(null);
     if (Object.keys(errs).length > 0) return;
 
-    // Real status check: donors are frictionless, staff roles must be
-    // an approved account tied to that exact email before they get in.
-    if (role !== "Donor") {
-      const account = findUserByEmail(email.trim());
+    setSubmitting(true);
+    try {
+      // Ask auth-service (real backend, port 8081) to check the
+      // email/password and hand back a signed JWT token.
+      const result = await loginUser({ email: email.trim(), password });
 
-      if (!account) {
-        setErrors({ email: "No account found for this email. Register first." });
-        return;
+      // Remember the token + user info so other screens/services could
+      // use it later (e.g. calling employee-service with it).
+      saveSession(result);
+
+      // The backend returns a role like "HOSPITAL_ADMIN" - translate it
+      // into the display name ("Hospital Admin") the rest of the app uses.
+      const displayRole = BACKEND_ROLE_TO_DISPLAY[result.role] || role;
+      onLogin(displayRole);
+    } catch (err) {
+      if (err.accountStatus) {
+        // Correct password, but the account is PENDING or REJECTED -
+        // show the status banner instead of a generic error.
+        setBlocked({ status: err.accountStatus.toLowerCase(), reason: err.accountReason });
+      } else {
+        // The backend sends a 401 for wrong credentials - show that
+        // (or a network-error message) right under the password field.
+        setErrors({ password: err.message || "Invalid email or password" });
       }
-      if (account.role !== role) {
-        setErrors({ email: `This email is registered as ${account.role}, not ${role}.` });
-        return;
-      }
-      if (account.status !== "approved") {
-        setBlocked({ status: account.status, reason: account.rejectionReason });
-        return;
-      }
+    } finally {
+      setSubmitting(false);
     }
-
-    onLogin(role);
   }
 
   return (
@@ -264,6 +291,8 @@ export default function Login({ onLogin }) {
             style={{ width: "100%", height: 38, borderRadius: 7, border: `1.5px solid ${errors.password ? C.red700 : C.border}`, background: C.fog, padding: "0 12px", fontSize: 12.5, color: C.navy, outline: "none", boxSizing: "border-box" }}
           />
           {errors.password && <div style={{ fontSize: 10.5, color: C.red700, marginTop: 5 }}>{errors.password}</div>}
+          {/* Demo accounts are auto-created by the backend (see DemoDataSeeder.java) - this reminds you what to type. */}
+          <div style={{ fontSize: 10, color: C.gray, marginTop: 5 }}>Demo password for all quick-pick accounts: {DEMO_PASSWORD}</div>
 
           <div style={{ textAlign: "right", marginTop: 6, marginBottom: 18 }}>
             <span onClick={() => setView("forgot")} style={{ fontSize: 11, color: C.blue, cursor: "pointer" }}>Forgot password?</span>
@@ -271,11 +300,12 @@ export default function Login({ onLogin }) {
 
           <button
             onClick={submit}
-            style={{ width: "100%", height: 42, background: C.red700, color: C.white, border: "none", borderRadius: 9, fontSize: 13.5, fontWeight: 700, cursor: "pointer", letterSpacing: "-0.1px" }}
+            disabled={submitting}
+            style={{ width: "100%", height: 42, background: C.red700, color: C.white, border: "none", borderRadius: 9, fontSize: 13.5, fontWeight: 700, cursor: submitting ? "default" : "pointer", letterSpacing: "-0.1px", opacity: submitting ? 0.7 : 1 }}
             onMouseEnter={e => e.currentTarget.style.background = "#A80015"}
             onMouseLeave={e => e.currentTarget.style.background = C.red700}
           >
-            Continue →
+            {submitting ? "Signing in…" : "Continue →"}
           </button>
 
           <div style={{ textAlign: "center", marginTop: 16, fontSize: 10.5, color: C.gray }}>

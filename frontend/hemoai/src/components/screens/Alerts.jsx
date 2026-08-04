@@ -1,39 +1,69 @@
-import { useState } from "react";
+// src/components/screens/Alerts.jsx
+//
+// Alerts are computed live from inventory-service's real stock numbers
+// (same data as Inventory.jsx) - a blood group below its minimum
+// threshold becomes a "Critical" or "Warning" alert here. There's no
+// separate alerts database; this list changes automatically whenever
+// stock levels change.
+import { useEffect, useState } from "react";
 import { C } from "../../tokens";
 import { AlertRow, Card } from "../shared/UI";
+import { listInventory, getToken } from "../../api";
 
-const allAlerts = [
-  { type: "critical", title: "O− critically low at City Hospital",         desc: "12 units left. Daily demand is 9. SMS sent to 4 nearby donors.",          time: "2m ago" },
-  { type: "critical", title: "B− below threshold — Apollo Hospital",        desc: "61 units vs minimum 75. 3 eligible donors alerted within 5 km.",          time: "14m ago" },
-  { type: "critical", title: "A− emergency — Kovai Medical Centre",         desc: "10 units requested urgently. Donor matching underway.",                   time: "28m ago" },
-  { type: "low",      title: "AB− shortage likely in 3 days",               desc: "AI model flags 79% probability of stockout. Recommend proactive alert.",   time: "1h ago" },
-  { type: "low",      title: "O+ demand spike this weekend",                desc: "Festival surge expected — +28%. Consider pre-stocking today.",             time: "2h ago" },
-  { type: "low",      title: "B+ approaching minimum — Govt Hospital",      desc: "Current 88 units, threshold is 90. Keep watching.",                        time: "3h ago" },
-  { type: "low",      title: "A+ request volume high today",                desc: "17 units requested so far, above the daily average of 12.",                time: "4h ago" },
-  { type: "resolved", title: "B+ shortage cleared — Govt Hospital",         desc: "3 donors came in. 60 units collected. Back to safe level.",                time: "5h ago" },
-  { type: "resolved", title: "A+ emergency request closed",                 desc: "18 units delivered to City Hospital.",                                     time: "6h ago" },
-  { type: "resolved", title: "O+ SMS campaign — 12 donor responses",        desc: "Stock replenished. Campaign closed.",                                      time: "7h ago" },
-  { type: "resolved", title: "AB− units transferred from regional reserve", desc: "24 units received. Stock now at safe level.",                              time: "9h ago" },
-  { type: "resolved", title: "Pre-stock completed ahead of festival",        desc: "200 units staged for weekend demand.",                                    time: "11h ago" },
-];
+// Turns one inventory row into an alert, or null if that blood group is
+// currently at a safe level (safe groups don't generate an alert at all).
+function toAlert(row) {
+  const ratio = row.minimumThreshold > 0 ? row.units / row.minimumThreshold : 1;
+  if (ratio >= 1) return null;
 
-const tabs = [
-  { label: `All`,                                              filter: null },
-  { label: `Critical (${allAlerts.filter(a=>a.type==="critical").length})`, filter: "critical" },
-  { label: `Warnings (${allAlerts.filter(a=>a.type==="low").length})`,      filter: "low" },
-  { label: `Resolved (${allAlerts.filter(a=>a.type==="resolved").length})`, filter: "resolved" },
-];
+  const type = ratio < 0.3 ? "critical" : "low";
+  const shortBy = row.minimumThreshold - row.units;
+  return {
+    type,
+    title: type === "critical"
+      ? `${row.bloodGroup} critically low - only ${row.units} units left`
+      : `${row.bloodGroup} below minimum threshold`,
+    desc: `Current stock is ${row.units} units, minimum is ${row.minimumThreshold} (short by ${shortBy} units).`,
+    time: row.lastUpdated ? new Date(row.lastUpdated).toLocaleString() : "",
+  };
+}
 
 export default function Alerts() {
+  const token = getToken();
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [tab, setTab] = useState(0);
-  const shown = tabs[tab].filter ? allAlerts.filter(a => a.type === tabs[tab].filter) : allAlerts;
+
+  useEffect(() => {
+    if (!token) {
+      setError("You're not signed in. Please log in again.");
+      setLoading(false);
+      return;
+    }
+    listInventory(token)
+      .then(rows => setAlerts(rows.map(toAlert).filter(Boolean)))
+      .catch(err => setError(err.message || "Could not load alerts"))
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  const criticalCount = alerts.filter(a => a.type === "critical").length;
+  const warningCount = alerts.filter(a => a.type === "low").length;
+
+  const tabs = [
+    { label: "All",                        filter: null },
+    { label: `Critical (${criticalCount})`, filter: "critical" },
+    { label: `Warnings (${warningCount})`,  filter: "low" },
+  ];
+
+  const shown = tabs[tab].filter ? alerts.filter(a => a.type === tabs[tab].filter) : alerts;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <span style={{ fontSize: 15, fontWeight: 700, color: C.navy }}>Alert feed</span>
-          <span style={{ fontSize: 11, color: C.gray, marginLeft: 8 }}>auto-refreshing</span>
+          <span style={{ fontSize: 11, color: C.gray, marginLeft: 8 }}>computed live from current stock</span>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           {tabs.map((t, i) => (
@@ -49,7 +79,20 @@ export default function Alerts() {
       </div>
 
       <Card style={{ padding: "16px 18px" }}>
-        {shown.map((a, i) => <AlertRow key={i} type={a.type} title={a.title} desc={a.desc} time={a.time} />)}
+        {error && (
+          <div style={{ fontSize: 11.5, color: C.red700, background: C.red50, borderRadius: 7, padding: "8px 12px", marginBottom: 10 }}>
+            {error}
+          </div>
+        )}
+        {loading ? (
+          <div style={{ fontSize: 12, color: C.gray, padding: "16px 0", textAlign: "center" }}>Loading…</div>
+        ) : shown.length === 0 ? (
+          <div style={{ fontSize: 12, color: C.gray, padding: "16px 0", textAlign: "center" }}>
+            No alerts - every blood group is currently at or above its minimum threshold.
+          </div>
+        ) : (
+          shown.map((a, i) => <AlertRow key={i} type={a.type} title={a.title} desc={a.desc} time={a.time} />)
+        )}
       </Card>
     </div>
   );

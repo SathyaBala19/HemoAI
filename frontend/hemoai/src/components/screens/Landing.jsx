@@ -26,24 +26,20 @@ function IconHeartHandshake({ color }) {
   );
 }
 
+// Marketing copy for the public landing page - kept to features that
+// actually exist in the app (see Inventory.jsx, Alerts.jsx, DonorMap.jsx),
+// no fabricated stats or unbuilt capabilities like SMS alerts.
 const FEATURES = [
-  ["ML Forecast", C.blue, "Predicts shortages days before they happen, so hospitals can act early instead of reacting to a crisis.", IconTrendingUp],
-  ["Live Alerts", C.red700, "Automatic SMS pings to nearby eligible donors the moment stock drops below a safe threshold.", IconBell],
-  ["Donor Match", C.green, "Finds and ranks compatible donors by distance and eligibility in seconds, not phone calls.", IconHeartHandshake],
-];
-
-const STATS = [
-  ["2,847", "units tracked"],
-  ["1,293", "registered donors"],
-  ["94.3%", "forecast accuracy"],
-  ["18 min", "avg. donor response"],
+  ["Live Inventory", C.blue, "Real-time blood stock levels per group, updated the moment staff record a change.", IconTrendingUp],
+  ["Stock Alerts", C.red700, "Automatic warnings when any blood group drops below its minimum threshold.", IconBell],
+  ["Donor Directory", C.green, "A searchable directory of every registered donor, by blood group and location.", IconHeartHandshake],
 ];
 
 const STEPS = [
-  ["1", "A hospital's stock drops below its safe threshold"],
-  ["2", "HemoAI forecasts the shortfall and flags it instantly"],
-  ["3", "Nearby eligible donors get an SMS alert automatically"],
-  ["4", "Staff track responses and fulfilment in one dashboard"],
+  ["1", "A blood bank or hospital logs current stock levels"],
+  ["2", "HemoAI flags any group that's dropped below its minimum threshold"],
+  ["3", "Staff check the donor directory for nearby eligible donors"],
+  ["4", "Donations get logged, restocking the group in real time"],
 ];
 
 function NavBar({ onSignIn }) {
@@ -84,8 +80,8 @@ export default function Landing({ onGetStarted, onSignIn }) {
             <span style={{ color: C.red500 }}>blood, when it matters most.</span>
           </h1>
           <p style={{ fontSize: 15, color: "#8890AC", marginTop: 20, lineHeight: 1.7, maxWidth: 520, marginLeft: "auto", marginRight: "auto" }}>
-            HemoAI forecasts shortages before they happen, matches donors to hospitals in minutes,
-            and keeps every facility in the district stocked — all from one dashboard.
+            HemoAI tracks live blood stock, flags low supply before it becomes a shortage,
+            and connects hospitals with nearby donors — all from one dashboard.
           </p>
 
           <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 32 }}>
@@ -107,14 +103,6 @@ export default function Landing({ onGetStarted, onSignIn }) {
             </button>
           </div>
 
-          <div style={{ display: "flex", gap: 40, justifyContent: "center", marginTop: 56, flexWrap: "wrap" }}>
-            {STATS.map(([v, l]) => (
-              <div key={l}>
-                <div style={{ fontSize: 24, fontWeight: 700, color: C.white, letterSpacing: "-0.5px" }}>{v}</div>
-                <div style={{ fontSize: 11, color: "#6B7290", marginTop: 3 }}>{l}</div>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
