@@ -1,5 +1,21 @@
 // src/roles.js
-// Role definitions — controls nav, home screen, and user info shown in sidebar/topbar
+// Role definitions - controls nav, home screen, and user info shown in sidebar/topbar
+//
+// Every role here needs a matching entry: "home" is which screen key it
+// lands on right after login, "mainNav"/"donorNav" are the sidebar menu
+// items it's allowed to see, and "user" is just fake demo profile info
+// (name/initials) shown in the sidebar and top bar.
+// The backend (auth-service) only knows about role names like "DONOR" or
+// "HOSPITAL_ADMIN" (see com.auth.entity.Role in backend/auth-service).
+// This app's screens key off the friendlier display names below instead
+// ("Donor", "Hospital Admin"). This map translates a role coming back
+// from a real login API call into the matching key in ROLES below.
+export const BACKEND_ROLE_TO_DISPLAY = {
+  DONOR: "Donor",
+  BLOOD_BANK_OFFICER: "Blood Bank Officer",
+  HOSPITAL_ADMIN: "Hospital Admin",
+  DHO: "DHO",
+};
 
 export const ROLES = {
   "Hospital Admin": {
@@ -66,11 +82,13 @@ export const ROLES = {
   },
 };
 
+// The title and subtitle shown at the top of each screen. "{name}" gets
+// swapped out for the logged-in user's first name in App.jsx.
 export const SCREEN_META = {
   dashboard:       { title: "Dashboard",                       subtitle: "Good morning, {name} — here is today's overview" },
   inventory:       { title: "Blood Inventory",                 subtitle: "Real-time stock levels across all blood groups" },
   donormap:        { title: "Donor Map",                       subtitle: "Finding nearest compatible O- donors — Coimbatore" },
-  forecast:        { title: "AI Demand Forecast",              subtitle: "Random Forest model · 94.3% accuracy · Last trained 6 hours ago" },
+  forecast:        { title: "Donation Trend Forecast",          subtitle: "Simple trend computed live from real donation history" },
   chatbot:         { title: "AI Chatbot",                      subtitle: "Claude-powered assistant for hospital staff and donors" },
   alerts:          { title: "Alerts and Notifications",        subtitle: "7 active alerts · 3 critical · Last updated just now" },
   reports:         { title: "Reports and Analytics",           subtitle: "Monthly summary · June 2026 · All hospitals" },

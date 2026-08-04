@@ -1,12 +1,20 @@
 // src/components/screens/HospitalReg.jsx
+//
+// districts/getDHOsForDistrict still come from the frontend-only mock
+// store (orgStore.js) - the backend has no concept of districts or
+// facility routing yet. But submit() below now creates a REAL account
+// via auth-service (role HOSPITAL_ADMIN), so this email/password can
+// actually be used to sign in afterwards.
 import { useState } from "react";
 import { C } from "../../tokens";
 import { Card, Field } from "../shared/UI";
-import { districts, getDHOsForDistrict, submitRegistration } from "../../data/orgStore";
+import { districts, getDHOsForDistrict } from "../../data/orgStore";
+import { registerUser } from "../../api";
 
 const EMPTY_FORM = {
   adminName: "", email: "", phone: "",
   hospitalName: "", licenseNo: "", district: "", address: "",
+  password: "", confirmPassword: "",
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -31,13 +39,18 @@ function validate(form) {
   if (!form.district) errs.district = "District is required";
   if (!form.address.trim()) errs.address = "Hospital address is required";
 
+  if (!form.password.trim()) errs.password = "Password is required";
+  else if (form.password.length < 8) errs.password = "Password must be at least 8 characters";
+  if (form.confirmPassword !== form.password) errs.confirmPassword = "Passwords do not match";
+
   return errs;
 }
 
 export default function HospitalReg() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
-  const [submitted, setSubmitted] = useState(null); // holds the created user once submitted
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   function update(e) {
     const { name, value } = e.target;
@@ -45,30 +58,34 @@ export default function HospitalReg() {
     if (errors[name]) setErrors(er => ({ ...er, [name]: undefined }));
   }
 
-  function submit() {
+  async function submit() {
     const errs = validate(form);
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
-    // Route the request to an approved DHO for that district.
+    // Still enforced from the mock district/DHO data - the backend
+    // doesn't model districts or facility routing yet.
     const dhos = getDHOsForDistrict(form.district);
     if (dhos.length === 0) {
       setErrors({ district: "No active DHO found for this district yet — contact the health department directly" });
       return;
     }
 
-    const newUser = submitRegistration({
-      name: form.adminName,
-      email: form.email,
-      role: "Hospital Admin",
-      district: form.district,
-      facilityName: form.hospitalName,
-      facilityType: "hospital",
-      licenseNo: form.licenseNo,
-      reportsTo: dhos[0].id, // in production: let them pick, or auto-route by district
-    });
-
-    setSubmitted(newUser);
+    setSubmitting(true);
+    try {
+      // Creates a REAL account on auth-service with role HOSPITAL_ADMIN.
+      await registerUser({
+        name: form.adminName,
+        email: form.email,
+        password: form.password,
+        role: "HOSPITAL_ADMIN",
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setErrors({ email: err.message || "Registration failed. Please try again." });
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (submitted) {
@@ -77,7 +94,8 @@ export default function HospitalReg() {
         <div style={{ width: 44, height: 44, borderRadius: "50%", background: C.amber50, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, fontSize: 20, color: C.amber }}>⏳</div>
         <div style={{ fontSize: 18, fontWeight: 700, color: C.navy, marginBottom: 8 }}>Registration submitted</div>
         <div style={{ fontSize: 12.5, color: C.gray, lineHeight: 1.6 }}>
-          Your hospital admin account for <strong style={{ color: C.navy }}>{form.hospitalName}</strong> is now <strong style={{ color: C.amber }}>pending approval</strong> from your District Health Officer. You'll get an email once it's reviewed — this usually takes 1–2 business days while your license number is verified.
+          Your hospital admin account for <strong style={{ color: C.navy }}>{form.hospitalName}</strong> is now <strong style={{ color: C.amber }}>pending approval</strong> from a District Health Officer.
+          You'll be able to sign in with {form.email} once it's approved.
         </div>
       </Card>
     );
@@ -116,12 +134,15 @@ export default function HospitalReg() {
         </div>
 
         <Field label="Hospital address" name="address" value={form.address} onChange={update} error={errors.address} required />
+        <Field label="Password" name="password" type="password" value={form.password} onChange={update} error={errors.password} required placeholder="At least 8 characters" />
+        <Field label="Confirm password" name="confirmPassword" type="password" value={form.confirmPassword} onChange={update} error={errors.confirmPassword} required placeholder="Re-type your password" />
 
         <button
           onClick={submit}
-          style={{ marginTop: 6, width: "100%", height: 42, background: C.red700, color: C.white, border: "none", borderRadius: 9, fontSize: 13.5, fontWeight: 700, cursor: "pointer" }}
+          disabled={submitting}
+          style={{ marginTop: 6, width: "100%", height: 42, background: C.red700, color: C.white, border: "none", borderRadius: 9, fontSize: 13.5, fontWeight: 700, cursor: submitting ? "default" : "pointer", opacity: submitting ? 0.7 : 1 }}
         >
-          Submit for approval
+          {submitting ? "Creating account…" : "Create account"}
         </button>
       </div>
     </Card>

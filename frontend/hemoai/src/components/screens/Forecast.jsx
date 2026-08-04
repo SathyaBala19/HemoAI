@@ -1,44 +1,119 @@
+// src/components/screens/Forecast.jsx
+// Simple trend screen - averages recent weekly donation counts from
+// donation-service and checks them against inventory-service stock
+// levels. Not a real ML model, just arithmetic over live data.
+import { useEffect, useState } from "react";
 import { C } from "../../tokens";
 import { KPICard, LineChart, DataTable, Card, SectionTitle } from "../shared/UI";
+import { listAllDonations, listInventory, getToken } from "../../api";
 
-const rows = [
-  ["O+",  "520", "96%", "↑ High demand", "Sufficient"],
-  ["A+",  "380", "94%", "→ Stable",      "Sufficient"],
-  ["B+",  "290", "91%", "→ Moderate",    "Sufficient"],
-  ["O−",  "85",  "97%", "↑ High demand", "Critical"],
-  ["B−",  "60",  "89%", "↑ High demand", "Critical"],
-  ["AB+", "210", "93%", "→ Stable",      "Sufficient"],
-  ["A−",  "55",  "88%", "↓ Declining",   "Low"],
-  ["AB−", "30",  "85%", "↑ Rising",      "Low"],
-];
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Buckets donations into the last N calendar weeks (oldest first).
+function weeklyTotals(donations, weeks = 6) {
+  const now = Date.now();
+  const buckets = Array.from({ length: weeks }, (_, i) => ({
+    label: `Wk ${weeks - i}`,
+    start: now - (i + 1) * WEEK_MS,
+    end: now - i * WEEK_MS,
+    count: 0,
+  })).reverse();
+
+  donations.forEach(d => {
+    const t = new Date(d.donationDate).getTime();
+    const bucket = buckets.find(b => t >= b.start && t < b.end);
+    if (bucket) bucket.count += 1;
+  });
+  return buckets;
+}
+
+function deriveStatus(units, threshold) {
+  const ratio = threshold > 0 ? units / threshold : 1;
+  if (ratio < 0.3) return "Critical";
+  if (ratio < 1) return "Low";
+  return "Sufficient";
+}
 
 export default function Forecast() {
+  const token = getToken();
+  const [donations, setDonations] = useState([]);
+  const [inventory, setInventory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!token) {
+      setError("You're not signed in. Please log in again.");
+      setLoading(false);
+      return;
+    }
+    Promise.all([listAllDonations(token), listInventory(token)])
+      .then(([donationData, inventoryData]) => {
+        setDonations(donationData);
+        setInventory(inventoryData);
+      })
+      .catch(err => setError(err.message || "Could not load forecast data"))
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  if (loading) return <div style={{ fontSize: 12, color: C.gray, padding: 24 }}>Loading…</div>;
+  if (error) return <div style={{ fontSize: 12, color: C.red700, padding: 24 }}>{error}</div>;
+
+  const weeks = weeklyTotals(donations, 6);
+  const thisWeek = weeks[weeks.length - 1].count;
+  const lastWeek = weeks[weeks.length - 2].count;
+  const weekChangePct = lastWeek > 0 ? Math.round(((thisWeek - lastWeek) / lastWeek) * 100) : null;
+
+  // Simple projection: average of the last 3 weeks - not a trained model,
+  // just an honest running average.
+  const recentWeeks = weeks.slice(-3).map(w => w.count);
+  const projectedNextWeek = Math.round(recentWeeks.reduce((a, b) => a + b, 0) / recentWeeks.length);
+
+  const belowThresholdGroups = inventory.filter(r => deriveStatus(r.units, r.minimumThreshold) !== "Sufficient");
+
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const recentDonations = donations.filter(d => new Date(d.donationDate).getTime() >= thirtyDaysAgo);
+  const donationCountByGroup = {};
+  recentDonations.forEach(d => { donationCountByGroup[d.bloodGroup] = (donationCountByGroup[d.bloodGroup] || 0) + 1; });
+  const mostDonatedGroup = Object.entries(donationCountByGroup).sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
+
+  const rows = inventory.map(r => [
+    r.bloodGroup,
+    String(r.units),
+    String(r.minimumThreshold),
+    String(donationCountByGroup[r.bloodGroup] || 0),
+    deriveStatus(r.units, r.minimumThreshold),
+  ]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div style={{ display: "flex", gap: 12 }}>
-        <KPICard label="Predicted demand (7 days)"  value="1,840 u" change="↑ 12% vs last week"   changeUp accent={C.red700} spark={0} />
-        <KPICard label="Model accuracy"             value="94.3%"   change="R² = 0.941, retrained 6h ago" changeUp accent={C.blue}   spark={1} />
-        <KPICard label="Groups at risk"             value="O− · B−" change="Shortage likely in 2 days"    accent={C.red700} spark={2} />
-        <KPICard label="Weekend surge (festival)"   value="+28%"    change="Fri–Sun predicted spike"      accent={C.amber}  spark={3} />
+        <KPICard label="Donations this week"       value={String(thisWeek)} change={weekChangePct === null ? "No data for last week" : `${weekChangePct >= 0 ? "↑" : "↓"} ${Math.abs(weekChangePct)}% vs last week`} changeUp={weekChangePct === null || weekChangePct >= 0} accent={C.red700} spark={0} />
+        <KPICard label="Next week (simple avg.)"   value={String(projectedNextWeek)} change="Average of last 3 weeks - not a trained model" changeUp accent={C.blue} spark={1} />
+        <KPICard label="Groups below threshold"    value={String(belowThresholdGroups.length)} change={belowThresholdGroups.map(r => r.bloodGroup).join(", ") || "None"} accent={C.red700} spark={2} />
+        <KPICard label="Most donated (30 days)"    value={mostDonatedGroup} change={`${donationCountByGroup[mostDonatedGroup] || 0} donations`} changeUp accent={C.amber} spark={3} />
       </div>
 
-      {/* Inline warning banner — feels human, not part of the grid */}
-      <div style={{ background: "#FFF4E5", border: `1px solid ${C.amber}44`, borderLeft: `3px solid ${C.amber}`, borderRadius: "0 10px 10px 0", padding: "10px 16px", display: "flex", gap: 10, alignItems: "center" }}>
-        <span aria-hidden="true" style={{ fontSize: 13 }}>⚠️</span>
-        <div>
-          <span style={{ fontSize: 12, fontWeight: 600, color: "#92600A" }}>Festival weekend alert — </span>
-          <span style={{ fontSize: 12, color: "#92600A" }}>Pongal demand surge expected Saturday. Pre-stock O+ and A+ by Friday evening.</span>
+      <div style={{ background: "#EEF4FF", border: `1px solid ${C.blue}44`, borderLeft: `3px solid ${C.blue}`, borderRadius: "0 10px 10px 0", padding: "10px 16px", display: "flex", gap: 10, alignItems: "center" }}>
+        <span aria-hidden="true" style={{ fontSize: 13 }}>ℹ️</span>
+        <div style={{ fontSize: 12, color: "#1E3A6E" }}>
+          This is a simple trend computed from real donation history, not a machine-learning model.
+          Building an actual forecasting model (e.g. in <code>ml-service/</code>) is a separate project.
         </div>
       </div>
 
       <Card style={{ padding: "18px 20px" }}>
-        <SectionTitle sub="next 7 days · Mon–Sun">Demand forecast</SectionTitle>
-        <LineChart values={[320, 390, 360, 450, 410, 520, 510]} labels={["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]} color={C.red700} height={170} />
+        <SectionTitle sub="last 6 weeks · from donation-service">Weekly donation trend</SectionTitle>
+        <LineChart values={weeks.map(w => w.count || 0)} labels={weeks.map(w => w.label)} color={C.red700} height={170} />
       </Card>
 
       <Card style={{ padding: "18px 20px" }}>
-        <SectionTitle>Per group breakdown</SectionTitle>
-        <DataTable headers={["Group", "Units needed", "Confidence", "Trend", "Stock status"]} rows={rows} />
+        <SectionTitle>Stock vs. recent donations, by group</SectionTitle>
+        {rows.length === 0 ? (
+          <div style={{ fontSize: 12, color: C.gray, padding: "16px 0", textAlign: "center" }}>No inventory data yet.</div>
+        ) : (
+          <DataTable headers={["Group", "Units on hand", "Minimum", "Donated (30d)", "Status"]} rows={rows} />
+        )}
       </Card>
     </div>
   );

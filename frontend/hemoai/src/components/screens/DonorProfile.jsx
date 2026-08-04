@@ -1,26 +1,72 @@
+// src/components/screens/DonorProfile.jsx
+//
+// Personal details come from auth-service (GET /api/users/profile).
+// Donation stats and "last donated" come from donation-service
+// (GET /api/donations/mine). Achievement badges are still a fixed list -
+// this backend doesn't track badge/achievement unlocks, so which ones
+// are "earned" is computed here from the donation count instead of
+// being hardcoded per user.
+import { useEffect, useState } from "react";
 import { C } from "../../tokens";
 import { Card } from "../shared/UI";
+import { getMyProfile, listMyDonations, getToken } from "../../api";
 
-const details = [
-  ["Name",          "Arjun Kumar"],
-  ["Phone",         "+91 98765 43210"],
-  ["Email",         "arjun.kumar@gmail.com"],
-  ["Location",      "Coimbatore, Tamil Nadu"],
-  ["Joined",        "12 Jan 2024"],
-  ["Last donated",  "14 Jun 2026 · City Hospital"],
-];
-
-const badges = [
-  ["First Drop",     "Donated for the first time",  C.blue,   true],
-  ["Life Saver",     "Reached 5 donations",          C.green,  true],
-  ["Hero Donor",     "10 donations milestone",        C.red700, true],
-  ["Blood Champion", "20 donations",                  C.amber,  false],
-  ["Regular",        "Donated for 6 months straight", C.green,  true],
-  ["SOS Hero",       "Responded to an emergency",     C.red700, true],
-];
+function initials(n) {
+  if (!n) return "?";
+  const p = n.split(" ");
+  return (p[0][0] + (p[1] ? p[1][0] : "")).toUpperCase();
+}
 
 export default function DonorProfile({ role }) {
-  const isDonor = role === "Donor";
+  const token = getToken();
+  const isDonor = role === "donor";
+
+  const [profile, setProfile] = useState(null);
+  const [donations, setDonations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!token) {
+      setError("You're not signed in. Please log in again.");
+      setLoading(false);
+      return;
+    }
+    Promise.all([getMyProfile(token), listMyDonations(token)])
+      .then(([profileData, donationData]) => {
+        setProfile(profileData);
+        setDonations(donationData);
+      })
+      .catch(err => setError(err.message || "Could not load profile"))
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  if (loading) return <div style={{ fontSize: 12, color: C.gray, padding: 24 }}>Loading…</div>;
+  if (error) return <div style={{ fontSize: 12, color: C.red700, padding: 24 }}>{error}</div>;
+
+  const donationCount = donations.length;
+  const litresGiven = ((donationCount * 450) / 1000).toFixed(1);
+  const livesTouched = donationCount * 3;
+  const lastDonation = donations[0]; // listMyDonations returns newest first
+
+  const details = [
+    ["Name", profile.name],
+    ["Email", profile.email],
+    ["Location", [profile.city, profile.state].filter(Boolean).join(", ") || "Not provided"],
+    ["Joined", profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "—"],
+    ["Last donated", lastDonation ? `${lastDonation.donationDate} · ${lastDonation.location}` : "No donations yet"],
+  ];
+
+  // Badges are computed live from the real donation count, not stored
+  // per-user on the backend - simple milestone thresholds.
+  const badges = [
+    ["First Drop",     "Donated for the first time", C.blue,   donationCount >= 1],
+    ["Life Saver",     "Reached 5 donations",        C.green,  donationCount >= 5],
+    ["Hero Donor",     "10 donations milestone",     C.red700, donationCount >= 10],
+    ["Blood Champion", "20 donations",               C.amber,  donationCount >= 20],
+  ];
+  const earnedCount = badges.filter(b => b[3]).length;
+
   return (
     <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
       {/* Left column */}
@@ -28,12 +74,10 @@ export default function DonorProfile({ role }) {
         <Card style={{ overflow: "hidden" }}>
           <div style={{ height: 56, background: `linear-gradient(135deg, #1a1f32 0%, #BE0018 100%)` }} />
           <div style={{ padding: "0 18px 20px", marginTop: -28, textAlign: "center" }}>
-            <div style={{ width: 56, height: 56, borderRadius: "50%", background: C.red700, border: `3px solid ${C.white}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, color: C.white, margin: "0 auto 10px", letterSpacing: "-0.5px" }}>AK</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: C.navy, letterSpacing: "-0.3px" }}>Arjun Kumar</div>
-            <div style={{ fontSize: 10.5, color: C.gray, marginTop: 2 }}>Active donor since Jan 2024</div>
-            <div style={{ marginTop: 10, display: "inline-flex", alignItems: "center", gap: 5, background: C.green50, border: `1px solid ${C.green}44`, borderRadius: 6, padding: "3px 10px" }}>
-              <div style={{ width: 5, height: 5, borderRadius: "50%", background: C.green }} />
-              <span style={{ fontSize: 10, fontWeight: 600, color: C.green }}>Verified donor</span>
+            <div style={{ width: 56, height: 56, borderRadius: "50%", background: C.red700, border: `3px solid ${C.white}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, color: C.white, margin: "0 auto 10px", letterSpacing: "-0.5px" }}>{initials(profile.name)}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: C.navy, letterSpacing: "-0.3px" }}>{profile.name}</div>
+            <div style={{ fontSize: 10.5, color: C.gray, marginTop: 2 }}>
+              {profile.createdAt ? `Donor since ${new Date(profile.createdAt).toLocaleDateString(undefined, { month: "short", year: "numeric" })}` : ""}
             </div>
           </div>
         </Card>
@@ -41,25 +85,17 @@ export default function DonorProfile({ role }) {
         <Card style={{ padding: "14px 18px" }}>
           <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, marginBottom: 12 }}>
             <div style={{ width: 48, height: 48, borderRadius: "50%", background: C.red50, border: `1.5px solid ${C.red700}44`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontSize: 18, fontWeight: 800, color: C.red700, letterSpacing: "-1px" }}>O+</span>
+              <span style={{ fontSize: 18, fontWeight: 800, color: C.red700, letterSpacing: "-1px" }}>{profile.bloodGroup || "—"}</span>
             </div>
             <div style={{ fontSize: 11, color: C.gray, lineHeight: 1.3 }}>Blood<br/>group</div>
           </div>
           <div style={{ height: 1, background: C.border, marginBottom: 12 }} />
-          {[["12", "donations"], ["4.8L", "blood given"], ["48", "lives touched"]].map(([v, l], i) => (
+          {[[String(donationCount), "donations"], [`${litresGiven}L`, "blood given (est.)"], [String(livesTouched), "lives touched (est.)"]].map(([v, l], i) => (
             <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: i < 2 ? `1px solid ${C.border}80` : "none" }}>
               <span style={{ fontSize: 10.5, color: C.gray }}>{l}</span>
               <span style={{ fontSize: 17, fontWeight: 700, color: C.navy, letterSpacing: "-0.3px" }}>{v}</span>
             </div>
           ))}
-        </Card>
-
-        <Card style={{ padding: "13px 16px", background: C.green50, border: `1px solid ${C.green}44` }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: C.green, marginBottom: 2 }}>Eligible to donate</div>
-          <div style={{ fontSize: 10, color: "#1A7A52" }}>Next window opens Aug 14, 2026</div>
-          {isDonor && (
-            <button style={{ width: "100%", height: 32, background: C.green, color: C.white, border: "none", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer", marginTop: 10 }}>Book a slot →</button>
-          )}
         </Card>
       </div>
 
@@ -79,7 +115,7 @@ export default function DonorProfile({ role }) {
 
         <Card style={{ padding: "16px 20px" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.slate, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 3 }}>Achievements</div>
-          <div style={{ fontSize: 10.5, color: C.gray, marginBottom: 13 }}>5 of 6 earned</div>
+          <div style={{ fontSize: 10.5, color: C.gray, marginBottom: 13 }}>{earnedCount} of {badges.length} earned</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
             {badges.map(([name, desc, col, earned], i) => (
               <div key={i} style={{

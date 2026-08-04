@@ -1,12 +1,19 @@
 // src/components/screens/DHOReg.jsx
+//
+// districts/districtAlreadyHasDho still come from the frontend-only mock
+// store - the backend doesn't model districts at all. submit() below
+// creates a REAL account via auth-service (role DHO), which then needs
+// another DHO's approval (see PendingApprovals.jsx) before it can log in.
 import { useState } from "react";
 import { C } from "../../tokens";
 import { Card, Field } from "../shared/UI";
-import { districts, users, submitRegistration } from "../../data/orgStore";
+import { districts, districtAlreadyHasDho } from "../../data/orgStore";
+import { registerUser } from "../../api";
 
 const EMPTY_FORM = {
   officerName: "", email: "", phone: "",
   district: "", govtIdNo: "", designation: "",
+  password: "", confirmPassword: "",
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -30,19 +37,18 @@ function validate(form) {
 
   if (!form.designation.trim()) errs.designation = "Designation is required";
 
-  return errs;
-}
+  if (!form.password.trim()) errs.password = "Password is required";
+  else if (form.password.length < 8) errs.password = "Password must be at least 8 characters";
+  if (form.confirmPassword !== form.password) errs.confirmPassword = "Passwords do not match";
 
-// Only one active DHO per district — a district shouldn't have two people
-// both claiming district-wide authority at once.
-function districtAlreadyHasDHO(districtId) {
-  return users.some(u => u.role === "DHO" && u.district === districtId && u.status === "approved");
+  return errs;
 }
 
 export default function DHOReg() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
-  const [submitted, setSubmitted] = useState(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   function update(e) {
     const { name, value } = e.target;
@@ -50,30 +56,30 @@ export default function DHOReg() {
     if (errors[name]) setErrors(er => ({ ...er, [name]: undefined }));
   }
 
-  function submit() {
+  async function submit() {
     const errs = validate(form);
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
-    if (districtAlreadyHasDHO(form.district)) {
+    if (districtAlreadyHasDho(form.district)) {
       setErrors({ district: "This district already has an active DHO. Contact the State Health Dept to request a transfer." });
       return;
     }
 
-    const superAdmin = users.find(u => u.role === "SuperAdmin");
-
-    const newUser = submitRegistration({
-      name: form.officerName,
-      email: form.email,
-      role: "DHO",
-      district: form.district,
-      facilityName: null,
-      facilityType: null, // DHOs aren't tied to a single facility
-      licenseNo: form.govtIdNo,
-      reportsTo: superAdmin.id,
-    });
-
-    setSubmitted(newUser);
+    setSubmitting(true);
+    try {
+      await registerUser({
+        name: form.officerName,
+        email: form.email,
+        password: form.password,
+        role: "DHO",
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setErrors({ email: err.message || "Registration failed. Please try again." });
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (submitted) {
@@ -82,7 +88,8 @@ export default function DHOReg() {
         <div style={{ width: 44, height: 44, borderRadius: "50%", background: C.amber50, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, fontSize: 20, color: C.amber }}>⏳</div>
         <div style={{ fontSize: 18, fontWeight: 700, color: C.navy, marginBottom: 8 }}>Registration submitted</div>
         <div style={{ fontSize: 12.5, color: C.gray, lineHeight: 1.6 }}>
-          Your DHO account request for <strong style={{ color: C.navy }}>{districts.find(d => d.id === form.district)?.name}</strong> district is now <strong style={{ color: C.amber }}>pending approval</strong> from the State Health Department. Since this role has district-wide oversight, verification includes confirming your government employee ID before activation.
+          Your DHO account request for <strong style={{ color: C.navy }}>{districts.find(d => d.id === form.district)?.name}</strong> district is now <strong style={{ color: C.amber }}>pending approval</strong> from an existing DHO.
+          You'll be able to sign in with {form.email} once it's approved.
         </div>
       </Card>
     );
@@ -120,11 +127,15 @@ export default function DHOReg() {
           {errors.district && <div style={{ fontSize: 10, color: C.red700, marginTop: 3 }}>{errors.district}</div>}
         </div>
 
+        <Field label="Password" name="password" type="password" value={form.password} onChange={update} error={errors.password} required placeholder="At least 8 characters" />
+        <Field label="Confirm password" name="confirmPassword" type="password" value={form.confirmPassword} onChange={update} error={errors.confirmPassword} required placeholder="Re-type your password" />
+
         <button
           onClick={submit}
-          style={{ marginTop: 6, width: "100%", height: 42, background: C.red700, color: C.white, border: "none", borderRadius: 9, fontSize: 13.5, fontWeight: 700, cursor: "pointer" }}
+          disabled={submitting}
+          style={{ marginTop: 6, width: "100%", height: 42, background: C.red700, color: C.white, border: "none", borderRadius: 9, fontSize: 13.5, fontWeight: 700, cursor: submitting ? "default" : "pointer", opacity: submitting ? 0.7 : 1 }}
         >
-          Submit for approval
+          {submitting ? "Creating account…" : "Create account"}
         </button>
       </div>
     </Card>

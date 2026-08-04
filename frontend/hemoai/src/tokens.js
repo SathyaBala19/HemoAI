@@ -1,3 +1,8 @@
+// src/tokens.js
+// A single place to define every color used across the app ("design
+// tokens"). Instead of typing a hex code everywhere, components import
+// C and use C.red700, C.navy, etc. If we ever want to re-theme the app,
+// we only have to change the values here.
 export const C = {
   red700:  "#BE0018",
   red500:  "#EC2D3A",
@@ -23,6 +28,9 @@ export const C = {
   border:   "#E3E5EF",
 };
 
+// Turns a status word (like "Safe" or "Critical") into a text color, so
+// every screen shows statuses with the same colors instead of each
+// screen picking its own.
 export function statusColor(val) {
   if (["Safe","Active","Sufficient","Completed"].includes(val)) return C.green;
   if (["Critical","Inactive","Rejected"].includes(val)) return C.red700;
@@ -30,6 +38,8 @@ export function statusColor(val) {
   return C.slate;
 }
 
+// Same idea as statusColor(), but returns a light background color to
+// use behind a status badge/pill.
 export function statusBg(val) {
   if (["Safe","Active","Sufficient","Completed"].includes(val)) return C.green50;
   if (["Critical","Inactive","Rejected"].includes(val)) return C.red50;

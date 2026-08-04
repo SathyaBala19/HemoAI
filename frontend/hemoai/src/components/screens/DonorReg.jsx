@@ -1,8 +1,19 @@
+// src/components/screens/DonorReg.jsx
+//
+// The public donor sign-up form. handleSubmit() below calls the real
+// backend (auth-service, POST /api/auth/register - see src/api.js) to
+// actually create a login-capable account with role "DONOR". After
+// registering here, the same email/password can be used on the Login
+// screen.
 import { useState } from "react";
 import { C } from "../../tokens";
 import { Card, Field } from "../shared/UI";
+import { registerUser } from "../../api";
 
-const bloodGroups = ["A+", "A−", "B+", "B−", "O+", "O−", "AB+", "AB−"];
+// ASCII hyphens, not the unicode minus sign - matches the blood group
+// strings used by inventory-service and donation-service, so donor
+// records line up with the rest of the system.
+const bloodGroups = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"];
 const genders = ["Male", "Female", "Prefer not to say"];
 
 const criteria = [
@@ -16,15 +27,16 @@ const criteria = [
 ];
 
 const steps = [
-  ["1", "We verify your profile within 24 hours",    C.blue],
-  ["2", "You're added to the donor matching pool",   C.green],
-  ["3", "You'll get SMS alerts for urgent needs",    C.amber],
-  ["4", "Track every donation and its impact",       C.red700],
+  ["1", "Your account is created and ready right away", C.blue],
+  ["2", "You appear in the donor directory hospitals search", C.green],
+  ["3", "Log each donation you make to build your history", C.amber],
+  ["4", "Get a certificate for every donation you log",  C.red700],
 ];
 
 const EMPTY_FORM = {
   fullName: "", city: "", email: "", state: "",
   phone: "", pin: "", dob: "", aadhaar: "",
+  password: "", confirmPassword: "",
 };
 
 const SAMPLE_DATA = {
@@ -36,6 +48,8 @@ const SAMPLE_DATA = {
   pin: "641004",
   dob: "1998-04-12",
   aadhaar: "7788",
+  password: "Password123!",
+  confirmPassword: "Password123!",
 };
 
 const HEALTH_LABELS = [
@@ -76,6 +90,12 @@ function validate(form, checks) {
   if (!form.aadhaar.trim()) errs.aadhaar = "Required for verification";
   else if (!/^\d{4}$/.test(form.aadhaar.trim())) errs.aadhaar = "Enter exactly 4 digits";
 
+  // This password becomes the donor's real login credential (used on the
+  // Login screen), so it needs the same basic checks as any sign-up form.
+  if (!form.password.trim()) errs.password = "Password is required";
+  else if (form.password.length < 8) errs.password = "Password must be at least 8 characters";
+  if (form.confirmPassword !== form.password) errs.confirmPassword = "Passwords do not match";
+
   if (!checks[0] || !checks[1] || !checks[2]) errs.health = "All eligibility declarations must be checked";
   if (!checks[3]) errs.consent = "You must consent to data use to register";
 
@@ -89,6 +109,7 @@ export default function DonorReg() {
   const [checks, setChecks] = useState([false, false, false, false]);
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   function update(field) {
     return (e) => {
@@ -104,10 +125,32 @@ export default function DonorReg() {
     setErrors({});
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const errs = validate(form, checks);
     setErrors(errs);
-    if (Object.keys(errs).length === 0) setSubmitted(true);
+    if (Object.keys(errs).length > 0) return;
+
+    setSubmitting(true);
+    try {
+      // Actually create the account on the backend (auth-service), so
+      // this donor can log in for real afterwards with this email/password.
+      await registerUser({
+        name: form.fullName,
+        email: form.email,
+        password: form.password,
+        role: "DONOR",
+        city: form.city,
+        state: form.state,
+        bloodGroup: bg,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      // e.g. "Email already registered", or a network error if
+      // auth-service isn't running.
+      setErrors({ email: err.message || "Registration failed. Please try again." });
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function startOver() {
@@ -123,10 +166,10 @@ export default function DonorReg() {
     return (
       <Card style={{ maxWidth: 480, margin: "40px auto", padding: "36px 32px", textAlign: "center" }}>
         <div style={{ width: 52, height: 52, borderRadius: "50%", background: C.green50, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 24, color: C.green }}>✓</div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: C.navy, marginBottom: 6 }}>Registration submitted</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: C.navy, marginBottom: 6 }}>Account created</div>
         <div style={{ fontSize: 12.5, color: C.gray, lineHeight: 1.6, marginBottom: 22 }}>
-          Thanks, {form.fullName.split(" ")[0] || "there"} — we've received your details for blood group {bg}.
-          You'll be verified within 24 hours and added to the donor matching pool.
+          Thanks, {form.fullName.split(" ")[0] || "there"} — you're registered as a {bg} donor.
+          Your account is ready right now — sign in any time with {form.email}.
         </div>
         <button onClick={startOver} style={{ height: 40, padding: "0 20px", background: C.red700, color: C.white, border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
           Register another donor
@@ -159,6 +202,15 @@ export default function DonorReg() {
               <Field label="PIN code"         placeholder="641004"          required name="pin"     value={form.pin}     onChange={update("pin")}     error={errors.pin} />
               <Field label="Date of birth"    placeholder="YYYY-MM-DD"      required type="date"  name="dob"     value={form.dob}     onChange={update("dob")}     error={errors.dob} />
               <Field label="Aadhaar (last 4)" placeholder="4521" hint="We only store the last 4 digits" required name="aadhaar" value={form.aadhaar} onChange={update("aadhaar")} error={errors.aadhaar} />
+            </div>
+
+            <div style={{ height: 1, background: C.border, marginBottom: 18 }} />
+
+            {/* This becomes the real login password for this account (see api.js / Login.jsx). */}
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.slate, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>Create a password</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px", marginBottom: 20 }}>
+              <Field label="Password"         placeholder="At least 8 characters" required type="password" name="password" value={form.password} onChange={update("password")} error={errors.password} />
+              <Field label="Confirm password" placeholder="Re-type your password" required type="password" name="confirmPassword" value={form.confirmPassword} onChange={update("confirmPassword")} error={errors.confirmPassword} />
             </div>
 
             <div style={{ height: 1, background: C.border, marginBottom: 18 }} />
@@ -201,10 +253,11 @@ export default function DonorReg() {
             <button
               type="button"
               onClick={handleSubmit}
-              style={{ width: "100%", height: 42, background: C.red700, color: C.white, border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer", marginTop: 16, letterSpacing: "-0.1px" }}
+              disabled={submitting}
+              style={{ width: "100%", height: 42, background: C.red700, color: C.white, border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: submitting ? "default" : "pointer", marginTop: 16, letterSpacing: "-0.1px", opacity: submitting ? 0.7 : 1 }}
               onMouseEnter={e => e.currentTarget.style.background = "#A80015"}
               onMouseLeave={e => e.currentTarget.style.background = C.red700}
-            >Register →</button>
+            >{submitting ? "Registering…" : "Register →"}</button>
           </div>
         </Card>
       </div>
