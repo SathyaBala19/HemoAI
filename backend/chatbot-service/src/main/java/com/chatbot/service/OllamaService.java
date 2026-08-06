@@ -7,12 +7,12 @@ import com.chatbot.dto.ChatMessage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 // Talks to a LOCAL Ollama server (see https://ollama.com) over plain
@@ -22,6 +22,12 @@ import java.util.List;
 //   ollama serve
 // This class doesn't call any cloud AI service - everything runs on
 // your own computer.
+//
+// Uses the classic blocking HttpURLConnection instead of
+// java.net.http.HttpClient: HttpClient always opens a
+// java.nio.channels.Selector internally, whose loopback wakeup pipe fails
+// with "Unable to establish loopback connection" on machines where
+// Docker/WSL has altered the Windows loopback interface.
 @Service
 public class OllamaService {
 
@@ -30,10 +36,6 @@ public class OllamaService {
 
     @Value("${ollama.model}")
     private String model;
-
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(5))
-            .build();
 
     // Sends the whole conversation to Ollama's /api/chat endpoint and
     // returns just the assistant's reply text.
@@ -51,32 +53,51 @@ public class OllamaService {
         }
         requestBody.add("messages", messagesJson);
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/chat"))
-                .header("Content-Type", "application/json")
-                .timeout(Duration.ofSeconds(60)) // local LLM replies can take a while
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody.toString()))
-                .build();
-
-        HttpResponse<String> response;
+        String responseBody;
+        int statusCode;
         try {
-            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (IOException | InterruptedException e) {
-            Thread.currentThread().interrupt();
+            HttpURLConnection connection = (HttpURLConnection) URI.create(baseUrl + "/api/chat").toURL().openConnection();
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setDoOutput(true);
+            connection.setConnectTimeout(5000);
+            connection.setReadTimeout(60000); // local LLM replies can take a while
+
+            byte[] payload = requestBody.toString().getBytes(StandardCharsets.UTF_8);
+            try (var out = connection.getOutputStream()) {
+                out.write(payload);
+            }
+
+            statusCode = connection.getResponseCode();
+            InputStream stream = statusCode >= 200 && statusCode < 300
+                    ? connection.getInputStream()
+                    : connection.getErrorStream();
+            responseBody = readAll(stream);
+        } catch (IOException e) {
             throw new IllegalStateException(
                     "Could not reach Ollama at " + baseUrl + " - is it running? (ollama serve)", e);
         }
 
-        if (response.statusCode() != 200) {
-            throw new IllegalStateException("Ollama returned an error (HTTP " + response.statusCode()
-                    + "): " + response.body());
+        if (statusCode != 200) {
+            throw new IllegalStateException("Ollama returned an error (HTTP " + statusCode + "): " + responseBody);
         }
 
-        JsonObject root = JsonParser.parseString(response.body()).getAsJsonObject();
+        JsonObject root = JsonParser.parseString(responseBody).getAsJsonObject();
         JsonObject messageNode = root.getAsJsonObject("message");
         if (messageNode == null || !messageNode.has("content")) {
             return "(empty response)";
         }
         return messageNode.get("content").getAsString();
+    }
+
+    private static String readAll(InputStream stream) throws IOException {
+        if (stream == null) {
+            return "";
+        }
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        try (stream) {
+            stream.transferTo(buffer);
+        }
+        return buffer.toString(StandardCharsets.UTF_8);
     }
 }
