@@ -263,12 +263,6 @@ export async function sendChatMessage(token, messages) {
   return data.reply;
 }
 
-// GET /api/chatbot/history - this user's saved conversation (stored in
-// MongoDB by chatbot-service), so it can be restored after a reload.
-export async function getChatHistory(token) {
-  return authFetch(`${CHATBOT_BASE_URL}/history`, token);
-}
-
 // --- ml-service calls (port 8086) ---
 // A real scikit-learn model, not a formula - see backend/../ml-service.
 // Staff-only on the backend (HOSPITAL_ADMIN/BLOOD_BANK_OFFICER/DHO).

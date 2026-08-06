@@ -13,10 +13,6 @@ REM    7. frontend           (Vite dev server, usually port 5173)
 REM
 REM  Requirements before running this:
 REM    - MySQL running locally (root / omen, matches application.properties)
-REM    - MongoDB running locally on port 27017 (matches chatbot-service's
-REM      application.properties) - e.g. "docker run -d -p 27017:27017 mongo"
-REM      or a local mongod install. Needed for the Chatbot screen's history
-REM      to be saved; everything else works fine without it.
 REM    - Java + Maven installed
 REM    - Node.js + npm installed
 REM    - Python + pip installed, with ml-service's dependencies installed
@@ -128,7 +124,7 @@ echo   - auth-service      : http://localhost:8081
 echo   - employee-service  : http://localhost:8082
 echo   - inventory-service : http://localhost:8083
 echo   - donation-service  : http://localhost:8084
-echo   - chatbot-service   : http://localhost:8085  (needs Ollama + MongoDB running separately)
+echo   - chatbot-service   : http://localhost:8085  (needs Ollama running separately)
 echo   - ml-service        : http://localhost:8086
 echo   - frontend          : http://localhost:5173  (check the frontend window for the exact URL)
 echo.

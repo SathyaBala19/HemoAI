@@ -5,7 +5,7 @@ frontend/.env
 frontend/.env.local
 
 # Java / Spring Boot (backend)
-backend/target/
+backend/*/target/
 backend/.mvn/
 backend/*.class
 backend/.idea/
