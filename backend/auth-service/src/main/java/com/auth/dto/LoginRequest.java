@@ -3,6 +3,10 @@ package com.auth.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
+// This is what the frontend sends us in the request body when logging in:
+// just an email and a password.
+// The @NotBlank/@Email annotations are validation rules - Spring checks
+// these automatically before the controller method even runs.
 public class LoginRequest {
 
     @NotBlank

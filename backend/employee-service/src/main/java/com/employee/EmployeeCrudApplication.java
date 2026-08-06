@@ -3,11 +3,10 @@ package com.employee;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-/**
- * The original version extended SpringBootServletInitializer to also
- * support WAR deployment for JSP. Now that this service only serves JSON
- * on an embedded server, that's no longer needed - runs as a plain jar.
- */
+// Starting point of the Employee Service. Just like AuthServiceApplication,
+// this boots up an embedded Tomcat server (this time on port 8082, see
+// application.properties) and wires up all the @Component/@Service/
+// @RestController classes automatically.
 @SpringBootApplication
 public class EmployeeCrudApplication {
 
