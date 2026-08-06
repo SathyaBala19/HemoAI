@@ -11,11 +11,7 @@
         <relativePath/>
     </parent>
 
-<<<<<<< HEAD
-    <groupId>com.kce.employee</groupId>
-=======
     <groupId>com.employee</groupId>
->>>>>>> d443f13996365e28c56f7f856e51bfdb693e1717
     <artifactId>employee-service</artifactId>
     <version>1.0.0</version>
     <!--
@@ -43,13 +39,10 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
-<<<<<<< HEAD
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
-=======
->>>>>>> d443f13996365e28c56f7f856e51bfdb693e1717
 
         <!-- MySQL JDBC driver. Hibernate auto-detects the MySQL dialect
              from the driver + URL, so no extra dialect dependency is

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+	<name>hemoai-frontend</name>
+	<comment>HemoAI React frontend (Vite). No Java nature - open a Terminal
+view in Eclipse (Window > Show View > Terminal) inside this project to
+run npm commands, or use the "Run Frontend (npm run dev)" external tool
+launch config included in this project.</comment>
+	<projects>
+	</projects>
+	<buildSpec>
+	</buildSpec>
+	<natures>
+	</natures>
+</projectDescription>

@@ -13,7 +13,7 @@
 import { useState, useRef, useEffect } from "react";
 import { C } from "../../tokens";
 import { Card } from "../shared/UI";
-import { sendChatMessage, listMyDonations, listInventory, getToken, getStoredUser } from "../../api";
+import { sendChatMessage, getChatHistory, listMyDonations, listInventory, getToken, getStoredUser } from "../../api";
 
 const roleLabels = {
   HOSPITAL_ADMIN: "hospital admin mode",
@@ -39,6 +39,15 @@ export default function Chatbot({ role }) {
   const [sidebarStats, setSidebarStats] = useState([]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  // Restore this user's saved conversation from chatbot-service (MongoDB)
+  // on load, so it survives page reloads instead of starting empty.
+  useEffect(() => {
+    if (!token) return;
+    getChatHistory(token)
+      .then(history => { if (history?.length) setMessages(history); })
+      .catch(() => {});
+  }, [token]);
 
   // Load real sidebar data once - donor: their own donation count; staff:
   // which blood groups are currently below their minimum threshold.

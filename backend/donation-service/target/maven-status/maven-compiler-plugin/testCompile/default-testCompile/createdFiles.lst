@@ -1,2 +1,2 @@
-com\kce\donation\util\JwtUtilTest.class
-com\kce\donation\service\DonationServiceTest.class
+com\donation\service\DonationServiceTest.class
+com\donation\security\JwtUtilTest.class

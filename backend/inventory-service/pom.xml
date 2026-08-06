@@ -11,7 +11,7 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.kce.inventory</groupId>
+    <groupId>com.inventory</groupId>
     <artifactId>inventory-service</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>

@@ -15,17 +15,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
-/**
- * Runs once per incoming request, BEFORE it reaches any @RestController.
- *
- * Unlike a typical single-app JwtAuthFilter, this one does NOT call a
- * UserDetailsService or hit the database - employee-service has no user
- * table. Everything Spring Security needs (email, role) comes straight out
- * of the token's claims, because auth-service already vetted the password
- * when it issued that token. This is the standard "stateless" pattern
- * microservices use to verify a JWT without a network call back to the
- * service that issued it.
- */
+// Runs once per request, before it reaches any controller.
+//
+// Important difference from auth-service's version of this same class:
+// this service has NO user table and does NOT call a UserDetailsService.
+// Everything it needs (email + role) is read directly out of the JWT's
+// claims, because auth-service already checked the password when it
+// created that token. This is the standard "stateless" trick that lets a
+// microservice trust a token without calling back to the service that
+// issued it.
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
@@ -47,7 +45,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String header = request.getHeader(HEADER);
 
         if (header == null || !header.startsWith(PREFIX)) {
-            filterChain.doFilter(request, response); // no token -> move on
+            filterChain.doFilter(request, response); // no token -> just continue
             return;
         }
 
@@ -57,6 +55,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         boolean noAuthYet = SecurityContextHolder.getContext().getAuthentication() == null;
 
         if (email != null && noAuthYet && jwtUtil.isTokenValid(token, email)) {
+            // Pull the role straight out of the token and turn it into a
+            // Spring Security "authority" (Spring expects roles to be
+            // prefixed with "ROLE_" internally).
             String role = jwtUtil.extractRole(token);
             List<SimpleGrantedAuthority> authorities =
                     List.of(new SimpleGrantedAuthority("ROLE_" + (role != null ? role : "USER")));

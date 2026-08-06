@@ -11,7 +11,7 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.kce.donation</groupId>
+    <groupId>com.donation</groupId>
     <artifactId>donation-service</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>

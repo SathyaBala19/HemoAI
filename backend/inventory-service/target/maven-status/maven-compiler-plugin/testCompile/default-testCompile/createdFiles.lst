@@ -1,2 +1,2 @@
-com\kce\inventory\util\JwtUtilTest.class
-com\kce\inventory\service\InventoryServiceTest.class
+com\inventory\security\JwtUtilTest.class
+com\inventory\service\InventoryServiceTest.class

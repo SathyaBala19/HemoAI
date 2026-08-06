@@ -17,6 +17,7 @@ const EMPLOYEE_BASE_URL = "http://localhost:8082/api/employees";
 const INVENTORY_BASE_URL = "http://localhost:8083/api/inventory";
 const DONATION_BASE_URL = "http://localhost:8084/api/donations";
 const CHATBOT_BASE_URL = "http://localhost:8085/api/chatbot";
+const ML_BASE_URL = "http://localhost:8086/api";
 
 // Small helper so every function below doesn't have to repeat the same
 // fetch + error-handling boilerplate.
@@ -260,6 +261,23 @@ export async function sendChatMessage(token, messages) {
     body: JSON.stringify({ messages }),
   });
   return data.reply;
+}
+
+// GET /api/chatbot/history - this user's saved conversation (stored in
+// MongoDB by chatbot-service), so it can be restored after a reload.
+export async function getChatHistory(token) {
+  return authFetch(`${CHATBOT_BASE_URL}/history`, token);
+}
+
+// --- ml-service calls (port 8086) ---
+// A real scikit-learn model, not a formula - see backend/../ml-service.
+// Staff-only on the backend (HOSPITAL_ADMIN/BLOOD_BANK_OFFICER/DHO).
+
+// GET /api/forecast - next week's predicted donation count per blood
+// group. Returns { "O+": { predictedUnits, weeksOfData, method }, ... }.
+export async function getMlForecast(token) {
+  const data = await authFetch(`${ML_BASE_URL}/forecast`, token);
+  return data.predictions;
 }
 
 // --- Simple helpers for storing the logged-in user's session in the browser ---

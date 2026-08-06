@@ -2,17 +2,25 @@ package com.employee.service;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.employee.entity.Employee;
 import com.employee.repository.EmployeeRepository;
 
+// This is where the actual employee business logic lives - the controller
+// just forwards requests here. Keeping this logic out of the controller
+// makes it easier to test and reuse.
 @Service
 public class EmployeeService {
 
-    @Autowired
-    private EmployeeRepository employeeRepository;
+    private final EmployeeRepository employeeRepository;
+
+    // Constructor injection instead of @Autowired on the field - this way
+    // employeeRepository is guaranteed to be set (final) as soon as this
+    // object exists, and it's easy to pass in a fake repository in tests.
+    public EmployeeService(EmployeeRepository employeeRepository) {
+        this.employeeRepository = employeeRepository;
+    }
 
     public void addEmployee(Employee employee) {
         validateEmployee(employee);
@@ -24,6 +32,8 @@ public class EmployeeService {
     }
 
     public Employee getEmployeeById(long id) {
+        // orElse(null) instead of throwing - the controller checks for
+        // null and returns a proper 404 response itself.
         return employeeRepository.findById(id).orElse(null);
     }
 
@@ -36,6 +46,8 @@ public class EmployeeService {
         employeeRepository.deleteById(id);
     }
 
+    // Simple manual validation - make sure required fields are actually
+    // filled in before we save anything to the database.
     private void validateEmployee(Employee employee) {
         if (employee.getName() == null || employee.getName().trim().isEmpty()) {
             throw new IllegalArgumentException("Employee name is required");
