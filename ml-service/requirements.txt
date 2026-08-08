@@ -5,3 +5,4 @@ cryptography>=42.0
 scikit-learn>=1.5
 numpy>=1.26
 PyJWT==2.9.0
+pymongo==4.8.0
