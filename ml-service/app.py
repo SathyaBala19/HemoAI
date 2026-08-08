@@ -7,10 +7,11 @@
 # Needs donation-service's MySQL database reachable (same DB the Java
 # donation-service uses - see config.py for connection settings) and the
 # same JWT_SECRET as the other services.
-from flask import Flask, jsonify
+from flask import Flask, g, jsonify
 from flask_cors import CORS
 
 import config
+import mongo
 from auth import require_staff_role
 from model import predict_next_week
 
@@ -28,9 +29,17 @@ def forecast():
     from a real scikit-learn model trained on donation-service's data."""
     try:
         predictions = predict_next_week()
+        mongo.log_forecast(g.username, predictions)
         return jsonify({"predictions": predictions})
     except Exception as exc:  # noqa: BLE001 - want a clean 503, not a stack trace
         return jsonify({"error": f"Could not compute forecast: {exc}"}), 503
+
+
+@app.route("/api/forecast/history", methods=["GET"])
+@require_staff_role
+def forecast_history():
+    """Returns the most recent forecast calls logged in MongoDB."""
+    return jsonify({"history": mongo.recent_forecasts()})
 
 
 if __name__ == "__main__":

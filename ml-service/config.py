@@ -20,6 +20,12 @@ JWT_SECRET = os.environ.get("JWT_SECRET", "ChangeThisToARandom256BitSecretKeySha
 
 PORT = int(os.environ.get("PORT", "8086"))
 
+# MongoDB - stores a log of each forecast call (who asked, when, what came
+# back). Separate from donation-service's MySQL data: this is unstructured,
+# append-only history, not core relational data, so it doesn't belong there.
+MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017")
+MONGO_DB_NAME = os.environ.get("MONGO_DB_NAME", "ml_service_db")
+
 # Only these roles can call the forecast endpoint - matches the role
 # checks in the Java services (donors don't need a supply forecast).
 ALLOWED_ROLES = {"HOSPITAL_ADMIN", "BLOOD_BANK_OFFICER", "DHO"}

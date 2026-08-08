@@ -13,6 +13,8 @@ REM    7. frontend           (Vite dev server, usually port 5173)
 REM
 REM  Requirements before running this:
 REM    - MySQL running locally (root / omen, matches application.properties)
+REM    - MongoDB installed as a Windows service (see below) - ml-service
+REM      uses it to log forecast calls, everything else is MySQL
 REM    - Java + Maven installed
 REM    - Node.js + npm installed
 REM    - Python + pip installed, with ml-service's dependencies installed
@@ -88,7 +90,19 @@ REM --- 5b. Start chatbot-service in its own window (port 8085) ---
 echo Launching chatbot-service on port 8085...
 start "HemoAI - chatbot-service" cmd /k "cd /d "%ROOT%backend\chatbot-service" && java -jar target\chatbot-service.jar"
 
-REM --- 5c. Start ml-service in its own window (port 8086) ---
+REM --- 5c. Make sure MongoDB is running, then start ml-service (port 8086) ---
+REM ml-service logs forecast calls to MongoDB (installed as a Windows
+REM service, not Docker - see ml-service\README.md). "net start" is a
+REM no-op with a friendly message if it's already running.
+echo Checking MongoDB service...
+net start MongoDB >nul 2>&1
+if %errorlevel%==0 (
+    echo MongoDB service started.
+) else (
+    echo MongoDB service already running or unavailable - continuing anyway,
+    echo ml-service logs to Mongo on a best-effort basis.
+)
+
 echo Launching ml-service on port 8086...
 start "HemoAI - ml-service" cmd /k "cd /d "%ROOT%ml-service" && python app.py"
 

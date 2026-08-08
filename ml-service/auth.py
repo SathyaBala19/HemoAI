@@ -7,7 +7,7 @@
 from functools import wraps
 
 import jwt
-from flask import request, jsonify
+from flask import request, jsonify, g
 
 import config
 
@@ -48,6 +48,7 @@ def require_staff_role(view_func):
         if role not in config.ALLOWED_ROLES:
             return jsonify({"error": "You do not have permission for this action"}), 403
 
+        g.username = payload.get("sub")
         return view_func(*args, **kwargs)
 
     return wrapped
