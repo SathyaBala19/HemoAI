@@ -211,6 +211,14 @@ export function getInventoryById(token, id) {
   return authFetch(`${INVENTORY_BASE_URL}/${id}`, token);
 }
 
+// POST /api/inventory - create a new blood-group row.
+export function createInventory(token, inventory) {
+  return authFetch(INVENTORY_BASE_URL, token, {
+    method: "POST",
+    body: JSON.stringify(inventory),
+  });
+}
+
 // PUT /api/inventory/:id - update units/threshold for one blood group.
 export function updateInventory(token, id, inventory) {
   return authFetch(`${INVENTORY_BASE_URL}/${id}`, token, {
@@ -272,6 +280,11 @@ export async function sendChatMessage(token, messages) {
 export async function getMlForecast(token) {
   const data = await authFetch(`${ML_BASE_URL}/forecast`, token);
   return data.predictions;
+}
+
+// GET /api/forecast/history - recent forecast calls logged in MongoDB.
+export function getMlForecastHistory(token) {
+  return authFetch(`${ML_BASE_URL}/forecast/history`, token);
 }
 
 // --- Simple helpers for storing the logged-in user's session in the browser ---
