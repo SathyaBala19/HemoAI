@@ -4,7 +4,9 @@
 // donation-service, GET /api/donations/mine). Fields this backend
 // doesn't track (volume, component type, doctor's name) have been
 // dropped rather than left as fabricated placeholder text.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import { C } from "../../tokens";
 import { Card } from "../shared/UI";
 import { listMyDonations, getToken, getStoredUser } from "../../api";
@@ -16,6 +18,8 @@ export default function Certificate() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [idx, setIdx] = useState(0);
+  const [downloading, setDownloading] = useState(false);
+  const certRef = useRef(null);
 
   useEffect(() => {
     if (!token) {
@@ -44,10 +48,33 @@ export default function Certificate() {
 
   const d = donations[idx];
 
+  // Renders just the certificate card to an image and drops it into a
+  // single properly-sized PDF page - a real file download, not the old
+  // window.print() approach which printed the whole app (sidebar, topbar,
+  // side panel and all) instead of just the certificate.
+  async function handleDownload() {
+    if (!certRef.current) return;
+    setDownloading(true);
+    try {
+      const canvas = await html2canvas(certRef.current, { scale: 2, backgroundColor: "#ffffff" });
+      const imgData = canvas.toDataURL("image/png");
+
+      const pdf = new jsPDF({
+        orientation: canvas.width > canvas.height ? "landscape" : "portrait",
+        unit: "px",
+        format: [canvas.width, canvas.height],
+      });
+      pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+      pdf.save(`HemoAI-Certificate-${d.certificateId}.pdf`);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
       {/* Certificate */}
-      <div style={{ width: 520, flexShrink: 0, background: C.white, borderRadius: 14, border: `1px solid ${C.border}`, boxShadow: "0 2px 12px rgba(17,21,39,0.10)", overflow: "hidden" }}>
+      <div ref={certRef} style={{ width: 520, flexShrink: 0, background: C.white, borderRadius: 14, border: `1px solid ${C.border}`, boxShadow: "0 2px 12px rgba(17,21,39,0.10)", overflow: "hidden" }}>
         <div style={{ padding: 14, background: "#FEFAF2" }}>
           <div style={{ background: C.white, borderRadius: 10, border: `1.5px solid #E8CC7044` }}>
             {/* Header */}
@@ -98,7 +125,7 @@ export default function Certificate() {
         <Card style={{ padding: "16px 18px" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.slate, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 13 }}>Share or download</div>
           {[
-            ["Download PDF", C.red700, () => window.print()],
+            [downloading ? "Preparing PDF…" : "Download PDF", C.red700, handleDownload, downloading],
             ["Share via WhatsApp", C.green, () => window.open(
               `https://wa.me/?text=${encodeURIComponent(`I donated blood on ${d.donationDate} at ${d.location} — certificate ${d.certificateId}, via HemoAI.`)}`,
               "_blank"
@@ -106,14 +133,14 @@ export default function Certificate() {
             ["Send by email", C.blue, () => {
               window.location.href = `mailto:?subject=${encodeURIComponent(`HemoAI donation certificate ${d.certificateId}`)}&body=${encodeURIComponent(`Certificate ${d.certificateId} for a blood donation on ${d.donationDate} at ${d.location}.`)}`;
             }],
-          ].map(([lbl, col, onClick]) => (
-            <button key={lbl} type="button" onClick={onClick} style={{ width: "100%", height: 38, borderRadius: 8, cursor: "pointer", background: `${col}10`, border: `1px solid ${col}44`, color: col, fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center", gap: 9, padding: "0 14px", marginBottom: 7 }}>
+          ].map(([lbl, col, onClick, disabled]) => (
+            <button key={lbl} type="button" onClick={onClick} disabled={disabled} style={{ width: "100%", height: 38, borderRadius: 8, cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.7 : 1, background: `${col}10`, border: `1px solid ${col}44`, color: col, fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center", gap: 9, padding: "0 14px", marginBottom: 7 }}>
               <div style={{ width: 7, height: 7, borderRadius: "50%", background: col, flexShrink: 0 }} />
               {lbl}
             </button>
           ))}
           <div style={{ fontSize: 9.5, color: C.gray, marginTop: 2, lineHeight: 1.4 }}>
-            "Download PDF" opens your browser's print dialog — choose "Save as PDF" as the destination.
+            Downloads just the certificate as a PDF file - no print dialog, no rest of the page included.
           </div>
         </Card>
 

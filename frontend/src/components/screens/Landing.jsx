@@ -44,7 +44,7 @@ const STEPS = [
 
 function NavBar({ onSignIn }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 48px", position: "relative", zIndex: 2 }}>
+    <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 48px", position: "relative", zIndex: 2 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 34, height: 34, borderRadius: 9, background: C.red700, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 16, color: C.white }}>H</div>
         <div style={{ fontSize: 17, fontWeight: 700, color: C.white, letterSpacing: "-0.3px" }}>HemoAI</div>
