@@ -25,6 +25,12 @@ REM      "ollama pull llama3.2" - this script starts "ollama serve" for you
 REM      if it's on PATH and not already running. Needed for the Chatbot
 REM      screen only, everything else works fine without it.
 REM
+REM  Note: chatbot-service calls inventory-service at answer time (to
+REM  ground its replies in real stock levels instead of guessing numbers -
+REM  see ChatController.java) - that's why inventory-service is started
+REM  before it below. If inventory-service is down, the chatbot still
+REM  answers, just without live stock data in its context.
+REM
 REM  Just double-click this file, or run "start.bat" from a terminal.
 REM ============================================================
 
