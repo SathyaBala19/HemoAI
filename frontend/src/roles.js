@@ -58,6 +58,7 @@ export const ROLES = {
     mainNav: [
       { key: "dho",        label: "DHO Dashboard",     abbr: "D" },
       { key: "approvals",  label: "Pending Approvals", abbr: "✓" },
+      { key: "staff",      label: "Blood Bank Staff",  abbr: "S" },
       { key: "inventory",  label: "Blood Inventory",   abbr: "I" },
       { key: "forecast",   label: "AI Forecast",       abbr: "F" },
       { key: "alerts",     label: "Alerts",            abbr: "A" },

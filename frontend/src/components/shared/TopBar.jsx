@@ -60,14 +60,6 @@ export default function TopBar({ title, subtitle, user, token, onLogout }) {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, marginLeft: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", background: C.fog, border: `1px solid ${C.border}`, borderRadius: 7, padding: "5px 11px", gap: 7, width: 176 }}>
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style={{ flexShrink: 0 }}>
-            <circle cx="5.5" cy="5.5" r="4" stroke={C.gray} strokeWidth="1.3"/>
-            <path d="M9 9l2.5 2.5" stroke={C.gray} strokeWidth="1.3" strokeLinecap="round"/>
-          </svg>
-          <span style={{ fontSize: 11.5, color: C.gray }}>Search...</span>
-        </div>
-
         <div ref={wrapRef} style={{ position: "relative" }}>
           <div
             onClick={() => setOpen(o => !o)}
