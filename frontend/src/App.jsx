@@ -148,6 +148,17 @@ function AppShell({ roleKey, onLogout }) {
 
   const roleDef = ROLES[roleKey];
 
+  // roleDef.user is a per-ROLE display stub (used for nav styling defaults),
+  // not the actual logged-in person - swap in the real name/email from the
+  // saved session so the sidebar/topbar show who's actually signed in.
+  const stored = getStoredUser();
+  const displayUser = {
+    ...roleDef.user,
+    name: stored?.name || roleDef.user.name,
+    email: stored?.email || "",
+    initials: (stored?.name || roleDef.user.name).split(" ").filter(Boolean).slice(0, 2).map(p => p[0]).join("").toUpperCase(),
+  };
+
   // Only let the user land on a page that's actually in their role's nav
   // menu - otherwise fall back to their home screen. This stops someone
   // from typing a random URL and reaching a screen they shouldn't see.
@@ -159,7 +170,7 @@ function AppShell({ roleKey, onLogout }) {
   const SafeComponent = SCREEN_COMPONENTS[safePage] || SCREEN_COMPONENTS[roleDef.home];
   const rawMeta       = SCREEN_META[safePage] || SCREEN_META[roleDef.home];
 
-  const firstName = roleDef.user.name.split(" ")[0];
+  const firstName = displayUser.name.split(" ")[0];
   const meta = {
     ...rawMeta,
     subtitle: rawMeta.subtitle.replace("{name}", firstName),
@@ -184,13 +195,14 @@ function AppShell({ roleKey, onLogout }) {
         onNavigate={handleNavigate}
         mainNav={roleDef.mainNav}
         donorNav={roleDef.donorNav}
-        user={roleDef.user}
+        user={displayUser}
       />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
         <TopBar
           title={meta.title}
           subtitle={meta.subtitle}
-          user={roleDef.user}
+          user={displayUser}
+          token={getToken()}
           onLogout={() => handleNavigate("__logout__")}
         />
         <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>

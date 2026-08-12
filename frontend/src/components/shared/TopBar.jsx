@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { C } from "../../tokens";
+import { getMyProfile } from "../../api";
 
 const NOTIFICATIONS = [
   { id: 1, title: "O− critically low at City Hospital", desc: "Only 12 units left. SMS alerts sent to 4 nearby donors.", time: "2m ago", unread: true },
@@ -7,19 +8,40 @@ const NOTIFICATIONS = [
   { id: 3, title: "A+ request fulfilled — Kovai Medical Centre", desc: "18 units delivered. Request closed.", time: "1h ago", unread: false },
 ];
 
-export default function TopBar({ title, subtitle, user, onLogout }) {
+export default function TopBar({ title, subtitle, user, token, onLogout }) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState(NOTIFICATIONS);
   const wrapRef = useRef(null);
   const unreadCount = items.filter(n => n.unread).length;
 
+  // Clicking the avatar shows the real logged-in profile (GET
+  // /api/users/profile - same endpoint DonorProfile.jsx uses), not just
+  // whatever's already in local state, so it's always current.
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const [profileError, setProfileError] = useState("");
+  const profileRef = useRef(null);
+
   useEffect(() => {
     function onClickOutside(e) {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
     }
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
+
+  function toggleProfile() {
+    setProfileOpen(o => {
+      const next = !o;
+      if (next && !profile && token) {
+        getMyProfile(token)
+          .then(setProfile)
+          .catch(err => setProfileError(err.message || "Could not load profile"));
+      }
+      return next;
+    });
+  }
 
   function markAllRead() {
     setItems(items.map(n => ({ ...n, unread: false })));
@@ -94,18 +116,61 @@ export default function TopBar({ title, subtitle, user, onLogout }) {
 
         <div style={{ width: 1, height: 22, background: C.border }} />
 
-        <div
-          onClick={onLogout}
-          title={`${user.name} · click to sign out`}
-          style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer", padding: "3px 6px", borderRadius: 8 }}
-          onMouseEnter={e => e.currentTarget.style.background = C.fog}
-          onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-        >
-          <div style={{ width: 30, height: 30, borderRadius: "50%", background: C.red700, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: C.white }}>{user.initials}</div>
-          <div>
-            <div style={{ fontSize: 11.5, fontWeight: 600, color: C.navy, lineHeight: 1.2 }}>{user.name.split(" ")[0]}</div>
-            <div style={{ fontSize: 9.5, color: C.gray }}>{user.role}</div>
+        <div ref={profileRef} style={{ position: "relative" }}>
+          <div
+            onClick={toggleProfile}
+            title={`${user.name} · click to view profile`}
+            style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer", padding: "3px 6px", borderRadius: 8, background: profileOpen ? C.fog : "transparent" }}
+            onMouseEnter={e => { if (!profileOpen) e.currentTarget.style.background = C.fog; }}
+            onMouseLeave={e => { if (!profileOpen) e.currentTarget.style.background = "transparent"; }}
+          >
+            <div style={{ width: 30, height: 30, borderRadius: "50%", background: C.red700, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: C.white }}>{user.initials}</div>
+            <div>
+              <div style={{ fontSize: 11.5, fontWeight: 600, color: C.navy, lineHeight: 1.2 }}>{user.name.split(" ")[0]}</div>
+              <div style={{ fontSize: 9.5, color: C.gray }}>{user.role}</div>
+            </div>
           </div>
+
+          {profileOpen && (
+            <div style={{
+              position: "absolute", top: 42, right: 0, width: 260,
+              background: C.white, border: `1px solid ${C.border}`, borderRadius: 12,
+              boxShadow: "0 10px 28px rgba(17,21,39,0.16)", overflow: "hidden", zIndex: 50,
+            }}>
+              <div style={{ padding: "16px 16px 14px", display: "flex", alignItems: "center", gap: 10, borderBottom: `1px solid ${C.border}` }}>
+                <div style={{ width: 40, height: 40, borderRadius: "50%", background: C.red700, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: C.white, flexShrink: 0 }}>{user.initials}</div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.navy, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.name}</div>
+                  <div style={{ fontSize: 10.5, color: C.gray }}>{user.role}</div>
+                </div>
+              </div>
+
+              <div style={{ padding: "12px 16px", fontSize: 11.5 }}>
+                {profileError ? (
+                  <div style={{ color: C.red700 }}>{profileError}</div>
+                ) : !profile ? (
+                  <div style={{ color: C.gray }}>Loading…</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div style={{ color: C.gray }}>Email<div style={{ color: C.navy, fontWeight: 500 }}>{profile.email}</div></div>
+                    {profile.phone && <div style={{ color: C.gray }}>Phone<div style={{ color: C.navy, fontWeight: 500 }}>{profile.phone}</div></div>}
+                    {(profile.city || profile.state) && <div style={{ color: C.gray }}>Location<div style={{ color: C.navy, fontWeight: 500 }}>{[profile.city, profile.state].filter(Boolean).join(", ")}</div></div>}
+                    {profile.bloodGroup && <div style={{ color: C.gray }}>Blood group<div style={{ color: C.navy, fontWeight: 500 }}>{profile.bloodGroup}</div></div>}
+                    {profile.createdAt && <div style={{ color: C.gray }}>Member since<div style={{ color: C.navy, fontWeight: 500 }}>{new Date(profile.createdAt).toLocaleDateString()}</div></div>}
+                  </div>
+                )}
+              </div>
+
+              <div
+                onClick={onLogout}
+                style={{ padding: "10px 16px", borderTop: `1px solid ${C.border}`, fontSize: 11.5, fontWeight: 600, color: C.red700, cursor: "pointer" }}
+                onMouseEnter={e => e.currentTarget.style.background = C.red50}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                Sign out
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
