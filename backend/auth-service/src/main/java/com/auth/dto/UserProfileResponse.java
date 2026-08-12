@@ -13,13 +13,16 @@ public class UserProfileResponse {
     private String city;
     private String state;
     private String bloodGroup;
+    private String phone;
+    private String address;
+    private String gender;
     private LocalDateTime createdAt;
     private String status;
     private String rejectionReason;
 
     public UserProfileResponse(Long id, String name, String email, String role,
-                                String city, String state, String bloodGroup, LocalDateTime createdAt,
-                                String status, String rejectionReason) {
+                                String city, String state, String bloodGroup, String phone, String address,
+                                String gender, LocalDateTime createdAt, String status, String rejectionReason) {
         this.id = id;
         this.name = name;
         this.email = email;
@@ -27,6 +30,9 @@ public class UserProfileResponse {
         this.city = city;
         this.state = state;
         this.bloodGroup = bloodGroup;
+        this.phone = phone;
+        this.address = address;
+        this.gender = gender;
         this.createdAt = createdAt;
         this.status = status;
         this.rejectionReason = rejectionReason;
@@ -39,6 +45,9 @@ public class UserProfileResponse {
     public String getCity() { return city; }
     public String getState() { return state; }
     public String getBloodGroup() { return bloodGroup; }
+    public String getPhone() { return phone; }
+    public String getAddress() { return address; }
+    public String getGender() { return gender; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public String getStatus() { return status; }
     public String getRejectionReason() { return rejectionReason; }

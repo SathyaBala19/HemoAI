@@ -8,6 +8,21 @@ import { listDonors, getToken } from "../../api";
 
 function initials(n) { const p = n.split(" "); return (p[0][0] + (p[1] ? p[1][0] : "")).toUpperCase(); }
 
+// Pre-filled "we need your blood" outreach message - opens the donor's own
+// SMS/mail app with this text ready to send, addressed to their real
+// phone/email from auth-service. Nothing is sent from our servers - the
+// staff member sends it themselves from their own device, same as
+// tapping a phone number to call, just via message instead.
+function smsLink(phone, bloodGroup) {
+  const body = `Hi, this is HemoAI Blood Bank. We urgently need ${bloodGroup || "your blood group"} donors - can you donate soon? Reply to confirm.`;
+  return `sms:${phone}?body=${encodeURIComponent(body)}`;
+}
+function mailLink(email, name, bloodGroup) {
+  const subject = "Urgent blood donation request - HemoAI";
+  const body = `Hi ${name},\n\nWe urgently need ${bloodGroup || "your blood group"} donors at our blood bank. Could you donate in the next few days?\n\nThank you,\nHemoAI Blood Bank`;
+  return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
 // A simple deterministic hash so the same donor always gets the same pin
 // position on the map, without needing any real coordinates.
 function hashPosition(seed) {
@@ -59,9 +74,17 @@ export default function DonorMap() {
               <span style={{ fontSize: 9, fontWeight: 700, color: C.white }}>{initials(p.name)}</span>
             </div>
             {selected === i && (
-              <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: 6, background: C.white, borderRadius: 8, padding: "7px 10px", whiteSpace: "nowrap", boxShadow: "0 3px 12px rgba(0,0,0,0.12)", zIndex: 10 }}>
+              <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: 6, background: C.white, borderRadius: 8, padding: "8px 11px", whiteSpace: "nowrap", boxShadow: "0 3px 12px rgba(0,0,0,0.12)", zIndex: 10 }}>
                 <div style={{ fontSize: 11.5, fontWeight: 600, color: C.navy }}>{p.name}</div>
-                <div style={{ fontSize: 10, color: C.gray }}>{p.city || "City not provided"} · {p.bloodGroup || "—"}</div>
+                <div style={{ fontSize: 10, color: C.gray, marginBottom: 6 }}>{p.city || "City not provided"} · {p.bloodGroup || "—"}</div>
+                <div style={{ display: "flex", gap: 6 }} onClick={e => e.stopPropagation()}>
+                  {p.phone ? (
+                    <a href={smsLink(p.phone, p.bloodGroup)} style={{ fontSize: 10, fontWeight: 600, color: C.white, background: C.green, borderRadius: 5, padding: "4px 8px", textDecoration: "none" }}>Message</a>
+                  ) : (
+                    <span style={{ fontSize: 10, color: C.gray }}>No phone on file</span>
+                  )}
+                  <a href={mailLink(p.email, p.name, p.bloodGroup)} style={{ fontSize: 10, fontWeight: 600, color: C.white, background: C.blue, borderRadius: 5, padding: "4px 8px", textDecoration: "none" }}>Email</a>
+                </div>
               </div>
             )}
           </div>
@@ -90,6 +113,10 @@ export default function DonorMap() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 600, color: C.navy }}>{d.name}</div>
                 <div style={{ fontSize: 10.5, color: C.gray, marginTop: 1 }}>{d.city || "City not provided"}{d.state ? `, ${d.state}` : ""}</div>
+                <div style={{ display: "flex", gap: 8, marginTop: 4 }} onClick={e => e.stopPropagation()}>
+                  {d.phone && <a href={smsLink(d.phone, d.bloodGroup)} title={d.phone} style={{ fontSize: 10, color: C.green, textDecoration: "none", fontWeight: 600 }}>Message</a>}
+                  <a href={mailLink(d.email, d.name, d.bloodGroup)} title={d.email} style={{ fontSize: 10, color: C.blue, textDecoration: "none", fontWeight: 600 }}>Email</a>
+                </div>
               </div>
               <span style={{ fontSize: 9.5, fontWeight: 600, color: C.red700, background: C.red50, borderRadius: 5, padding: "2px 7px", whiteSpace: "nowrap", alignSelf: "flex-start" }}>{d.bloodGroup || "—"}</span>
             </div>

@@ -70,8 +70,8 @@ async function postJson(url, body) {
 // on the backend). city/state/bloodGroup are optional and only really
 // used for DONOR accounts. Returns the success message string on
 // success, or throws an Error with the backend's message on failure.
-export function registerUser({ name, email, password, role, city, state, bloodGroup }) {
-  return postJson(`${AUTH_BASE_URL}/register`, { name, email, password, role, city, state, bloodGroup });
+export function registerUser({ name, email, password, role, city, state, bloodGroup, phone, address, gender }) {
+  return postJson(`${AUTH_BASE_URL}/register`, { name, email, password, role, city, state, bloodGroup, phone, address, gender });
 }
 
 // Calls POST /api/auth/login. On success, returns

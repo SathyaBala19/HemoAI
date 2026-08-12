@@ -31,6 +31,20 @@ echo.
 
 set ROOT=%~dp0
 
+REM --- 0. Stop anything already listening on our ports ---
+REM Re-running this script while a previous run is still up used to fail
+REM with "Unable to rename ...jar.original" - mvn can't overwrite a jar
+REM that's currently running. Free the ports first so rebuilds never
+REM collide with a live instance from last time.
+echo Freeing ports from any previous run...
+for %%P in (8081 8082 8083 8084 8085 8086 5173) do (
+    for /f "tokens=5" %%A in ('netstat -ano ^| findstr ":%%P " ^| findstr LISTENING') do (
+        taskkill /PID %%A /F >nul 2>&1
+    )
+)
+echo Done.
+echo.
+
 REM --- Pin JDK 21 for the build/run below ---
 REM The Java backends target Java 21 (see each pom.xml's <java.version>).
 REM If the machine's default "java"/"mvn" on PATH resolve to a different

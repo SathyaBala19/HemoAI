@@ -73,6 +73,9 @@ public class AuthController {
         user.setCity(request.getCity());
         user.setState(request.getState());
         user.setBloodGroup(request.getBloodGroup());
+        user.setPhone(request.getPhone());
+        user.setAddress(request.getAddress());
+        user.setGender(request.getGender());
         // DONOR is frictionless - approved immediately, matches the
         // "Instant - start donating right away" copy on the registration
         // page. Staff roles need a DHO to approve them first (see
