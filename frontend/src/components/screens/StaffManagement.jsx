@@ -189,9 +189,14 @@ export default function StaffManagement() {
       </Card>
 
       <Card style={{ padding: 24 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 600, color: C.navy, marginBottom: 12 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 600, color: C.navy, marginBottom: canDelete ? 12 : 2 }}>
           Employees ({employees.length})
         </div>
+        {!canDelete && (
+          <div style={{ fontSize: 10.5, color: C.gray, marginBottom: 10 }}>
+            Only a DHO can remove staff records - you can still add and edit.
+          </div>
+        )}
 
         {loading && <div style={{ fontSize: 12, color: C.gray, padding: "16px 0", textAlign: "center" }}>Loading…</div>}
 
@@ -227,14 +232,19 @@ export default function StaffManagement() {
                       Edit
                     </button>
                   )}
-                  {canDelete && (
-                    <button
-                      onClick={() => remove(e.id)}
-                      style={{ fontSize: 10.5, fontWeight: 600, color: C.red700, background: C.red50, border: "none", borderRadius: 5, padding: "5px 10px", cursor: "pointer" }}
-                    >
-                      Remove
-                    </button>
-                  )}
+                  <button
+                    onClick={() => canDelete && remove(e.id)}
+                    disabled={!canDelete}
+                    title={canDelete ? undefined : "Only a DHO can remove staff records"}
+                    style={{
+                      fontSize: 10.5, fontWeight: 600, border: "none", borderRadius: 5, padding: "5px 10px",
+                      color: canDelete ? C.red700 : C.gray,
+                      background: canDelete ? C.red50 : C.fog,
+                      cursor: canDelete ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    Remove
+                  </button>
                 </div>
               </div>
             ))}
