@@ -45,7 +45,7 @@ export default function DonorProfile({ role }) {
   if (error) return <div style={{ fontSize: 12, color: C.red700, padding: 24 }}>{error}</div>;
 
   const donationCount = donations.length;
-  const litresGiven = ((donationCount * 450) / 1000).toFixed(1);
+  const unitsGiven = donationCount; // one donation = one unit (~450ml)
   const livesTouched = donationCount * 3;
   const lastDonation = donations[0]; // listMyDonations returns newest first
 
@@ -93,7 +93,7 @@ export default function DonorProfile({ role }) {
             <div style={{ fontSize: 11, color: C.gray, lineHeight: 1.3 }}>Blood<br/>group</div>
           </div>
           <div style={{ height: 1, background: C.border, marginBottom: 12 }} />
-          {[[String(donationCount), "donations"], [`${litresGiven}L`, "blood given (est.)"], [String(livesTouched), "lives touched (est.)"]].map(([v, l], i) => (
+          {[[String(donationCount), "donations"], [`${unitsGiven} units`, "blood given (est.)"], [String(livesTouched), "lives touched (est.)"]].map(([v, l], i) => (
             <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: i < 2 ? `1px solid ${C.border}80` : "none" }}>
               <span style={{ fontSize: 10.5, color: C.gray }}>{l}</span>
               <span style={{ fontSize: 17, fontWeight: 700, color: C.navy, letterSpacing: "-0.3px" }}>{v}</span>

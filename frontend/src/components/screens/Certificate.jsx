@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import QRCode from "qrcode";
 import { C } from "../../tokens";
 import { Card } from "../shared/UI";
 import { listMyDonations, getToken, getStoredUser } from "../../api";
@@ -19,6 +20,7 @@ export default function Certificate() {
   const [error, setError] = useState("");
   const [idx, setIdx] = useState(0);
   const [downloading, setDownloading] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState("");
   const certRef = useRef(null);
 
   useEffect(() => {
@@ -32,6 +34,14 @@ export default function Certificate() {
       .catch(err => setError(err.message || "Could not load donations"))
       .finally(() => setLoading(false));
   }, [token]);
+
+  const certId = donations[idx]?.certificateId;
+  useEffect(() => {
+    if (!certId) return;
+    QRCode.toDataURL(`https://hemoai.gov.in/verify/${certId}`, { width: 160, margin: 0 })
+      .then(setQrDataUrl)
+      .catch(() => setQrDataUrl(""));
+  }, [certId]);
 
   if (loading) return <div style={{ fontSize: 12, color: C.gray, padding: 24 }}>Loading…</div>;
   if (error) return <div style={{ fontSize: 12, color: C.red700, padding: 24 }}>{error}</div>;
@@ -109,7 +119,11 @@ export default function Certificate() {
               </div>
 
               <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
-                <div style={{ width: 40, height: 40, background: C.fog, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: C.gray }}>QR</div>
+                {qrDataUrl ? (
+                  <img src={qrDataUrl} alt="QR code to verify this certificate" style={{ width: 40, height: 40, borderRadius: 6 }} />
+                ) : (
+                  <div style={{ width: 40, height: 40, background: C.fog, borderRadius: 6 }} />
+                )}
                 <div style={{ textAlign: "left" }}>
                   <div style={{ fontSize: 9, color: C.gray }}>Scan to verify authenticity</div>
                   <div style={{ fontSize: 8.5, color: C.gray, opacity: 0.7 }}>hemoai.gov.in/verify/{d.certificateId}</div>

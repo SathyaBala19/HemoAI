@@ -89,7 +89,8 @@ export default function DonorMap() {
   // scroll-to-zoom - a real map, not a static illustration.
   useEffect(() => {
     if (loading || error || !mapElRef.current || mapRef.current) return;
-    const map = L.map(mapElRef.current, { scrollWheelZoom: true }).setView(DEFAULT_CENTER, 10);
+    const map = L.map(mapElRef.current, { scrollWheelZoom: true, zoomControl: false }).setView(DEFAULT_CENTER, 10);
+    L.control.zoom({ position: "topright" }).addTo(map);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19,
