@@ -13,7 +13,7 @@ public class UserProfileMapper {
     public static UserProfileResponse toResponse(AppUser user) {
         return new UserProfileResponse(
                 user.getId(), user.getName(), user.getEmail(), user.getRole(),
-                user.getCity(), user.getState(), user.getBloodGroup(), user.getCreatedAt(),
-                user.getStatus(), user.getRejectionReason());
+                user.getCity(), user.getState(), user.getBloodGroup(), user.getPhone(), user.getAddress(),
+                user.getGender(), user.getCreatedAt(), user.getStatus(), user.getRejectionReason());
     }
 }

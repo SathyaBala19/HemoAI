@@ -35,7 +35,7 @@ const steps = [
 
 const EMPTY_FORM = {
   fullName: "", city: "", email: "", state: "",
-  phone: "", pin: "", dob: "", aadhaar: "",
+  phone: "", address: "", pin: "", dob: "", aadhaar: "",
   password: "", confirmPassword: "",
 };
 
@@ -45,6 +45,7 @@ const SAMPLE_DATA = {
   email: "biryani.kumar@email.com",
   state: "Tamil Nadu",
   phone: "9876543210",
+  address: "14 Race Course Road",
   pin: "641004",
   dob: "1998-04-12",
   aadhaar: "7788",
@@ -71,6 +72,8 @@ function validate(form, checks) {
 
   if (!form.phone.trim()) errs.phone = "Phone number is required";
   else if (!/^(\+91[\s-]?)?[6-9]\d{9}$/.test(form.phone.replace(/\s/g, ""))) errs.phone = "Enter a valid 10-digit Indian mobile number";
+
+  if (!form.address.trim()) errs.address = "Address is required so a blood bank can reach you";
 
   if (!form.pin.trim()) errs.pin = "PIN code is required";
   else if (!/^\d{6}$/.test(form.pin.trim())) errs.pin = "PIN code must be 6 digits";
@@ -142,6 +145,9 @@ export default function DonorReg() {
         city: form.city,
         state: form.state,
         bloodGroup: bg,
+        phone: form.phone,
+        address: `${form.address}, ${form.city}, ${form.state} ${form.pin}`,
+        gender,
       });
       setSubmitted(true);
     } catch (err) {
@@ -200,6 +206,7 @@ export default function DonorReg() {
               <Field label="State"            placeholder="Tamil Nadu"       required name="state"    value={form.state}    onChange={update("state")}    error={errors.state} />
               <Field label="Phone"            placeholder="+91 98765 43210" required type="tel"   name="phone"   value={form.phone}   onChange={update("phone")}   error={errors.phone} />
               <Field label="PIN code"         placeholder="641004"          required name="pin"     value={form.pin}     onChange={update("pin")}     error={errors.pin} />
+              <Field label="Street address"   placeholder="14 Race Course Road" required name="address" value={form.address} onChange={update("address")} error={errors.address} hint="Shown to staff so they can reach you for a blood request" />
               <Field label="Date of birth"    placeholder="YYYY-MM-DD"      required type="date"  name="dob"     value={form.dob}     onChange={update("dob")}     error={errors.dob} />
               <Field label="Aadhaar (last 4)" placeholder="4521" hint="We only store the last 4 digits" required name="aadhaar" value={form.aadhaar} onChange={update("aadhaar")} error={errors.aadhaar} />
             </div>

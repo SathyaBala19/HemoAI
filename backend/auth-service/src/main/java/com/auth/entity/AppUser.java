@@ -60,6 +60,17 @@ public class AppUser {
     @Column(name = "BLOOD_GROUP", length = 3)
     private String bloodGroup;
 
+    // Also donor-only in practice - lets staff actually reach a donor
+    // when they need blood (see DonorMap.jsx contact links).
+    @Column(name = "PHONE", length = 20)
+    private String phone;
+
+    @Column(name = "ADDRESS", length = 255)
+    private String address;
+
+    @Column(name = "GENDER", length = 20)
+    private String gender;
+
     // nullable=true at the DB level on purpose: Hibernate's auto-update
     // can't add a brand-new NOT NULL column to a table that already has
     // rows (MySQL has nothing to fill old rows with, so it fails).
@@ -106,6 +117,12 @@ public class AppUser {
     public void setState(String state) { this.state = state; }
     public String getBloodGroup() { return bloodGroup; }
     public void setBloodGroup(String bloodGroup) { this.bloodGroup = bloodGroup; }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
+    public String getGender() { return gender; }
+    public void setGender(String gender) { this.gender = gender; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public String getStatus() { return status; }

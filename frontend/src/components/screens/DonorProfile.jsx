@@ -52,6 +52,9 @@ export default function DonorProfile({ role }) {
   const details = [
     ["Name", profile.name],
     ["Email", profile.email],
+    ["Phone", profile.phone || "Not provided"],
+    ["Address", profile.address || "Not provided"],
+    ["Gender", profile.gender || "Not provided"],
     ["Location", [profile.city, profile.state].filter(Boolean).join(", ") || "Not provided"],
     ["Joined", profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "—"],
     ["Last donated", lastDonation ? `${lastDonation.donationDate} · ${lastDonation.location}` : "No donations yet"],

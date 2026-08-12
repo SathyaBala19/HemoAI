@@ -5,38 +5,15 @@
 // get back a JWT token. auth-service must be running on port 8081 for
 // this to work (start.bat in the project root starts it automatically).
 //
-// The 4 role "quick pick" buttons below are pre-filled with 4 demo
-// accounts that auth-service creates automatically on startup (see
-// DemoDataSeeder.java in backend/auth-service) - they all share the same
-// demo password, shown under the password field.
+// Sign-in only asks for email/password - the role isn't picked here, it
+// comes back from the backend's login response (see BACKEND_ROLE_TO_DISPLAY
+// in roles.js) and is used to route to the right dashboard.
 import { useState } from "react";
 import { C } from "../../tokens";
 import { loginUser, saveSession } from "../../api";
 import { BACKEND_ROLE_TO_DISPLAY } from "../../roles";
 
-// The four roles a user can sign in as. Each one leads to a different
-// dashboard (see roles.js for what each role can see/do).
-const roles = ["Hospital Admin", "Blood Bank Officer", "DHO", "Donor"];
-
-const roleHints = {
-  "Hospital Admin":     "Manage stock, requests & reports for your hospital",
-  "Blood Bank Officer": "Handle requests, dispatches and donor coordination",
-  "DHO":                "District-level oversight across all facilities",
-  "Donor":              "View your donation history and certificates",
-};
-
-const roleEmails = {
-  "Hospital Admin":     "sathya.bala@cityhospital.gov.in",
-  "Blood Bank Officer": "rajan.k@cityhospital.gov.in",
-  "DHO":                "p.selvam@coimbatore.tn.gov.in",
-  "Donor":              "arjun.kumar@gmail.com",
-};
-
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-// Must match DemoDataSeeder.DEMO_PASSWORD in backend/auth-service - shown
-// to the user as a hint so they know what to type for the demo accounts.
-const DEMO_PASSWORD = "Password123!";
 
 function BrandPanel() {
   return (
@@ -89,60 +66,21 @@ function CardShell({ children }) {
   );
 }
 
+// There's no password-reset endpoint anywhere in auth-service (no email
+// sending infra exists in this project), so this deliberately does NOT
+// pretend to send a reset link - that would tell someone "check your
+// email" when nothing was ever sent. Points them to a real DHO instead.
 function ForgotPasswordCard({ onBack }) {
-  const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
-  const [sent, setSent] = useState(false);
-
-  function submit() {
-    if (!email.trim()) return setError("Enter your email address");
-    if (!EMAIL_RE.test(email.trim())) return setError("Enter a valid email address");
-    setError("");
-    setSent(true);
-  }
-
-  if (sent) {
-    return (
-      <CardShell>
-        <div style={{ width: 44, height: 44, borderRadius: "50%", background: C.green50, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, fontSize: 20, color: C.green }}>✓</div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: C.navy, marginBottom: 8 }}>Check your email</div>
-        <div style={{ fontSize: 12.5, color: C.gray, lineHeight: 1.6, marginBottom: 20 }}>
-          If an account exists for <strong style={{ color: C.navy }}>{email}</strong>, we've sent a link to reset your password.
-        </div>
-        <button onClick={onBack} style={{ width: "100%", height: 40, background: C.fog, color: C.navy, border: `1px solid ${C.border}`, borderRadius: 9, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
-          ← Back to sign in
-        </button>
-      </CardShell>
-    );
-  }
-
   return (
     <CardShell>
-      <div style={{ fontSize: 13, color: C.gray, marginBottom: 6 }}>Reset password</div>
-      <div style={{ fontSize: 21, fontWeight: 700, color: C.navy, marginBottom: 10, letterSpacing: "-0.3px" }}>Forgot your password?</div>
-      <div style={{ fontSize: 12, color: C.gray, marginBottom: 20, lineHeight: 1.5 }}>
-        Enter the email tied to your account and we'll send a reset link.
+      <div style={{ width: 44, height: 44, borderRadius: "50%", background: C.amber50, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, fontSize: 20, color: C.amber }}>i</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: C.navy, marginBottom: 8 }}>Password reset isn't available yet</div>
+      <div style={{ fontSize: 12.5, color: C.gray, lineHeight: 1.6, marginBottom: 20 }}>
+        Self-service password reset hasn't been built for HemoAI yet. Contact your District Health Officer to have your password reset manually.
       </div>
-
-      <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: C.slate, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em" }}>Email</label>
-      <input
-        value={email}
-        onChange={e => { setEmail(e.target.value); if (error) setError(""); }}
-        placeholder="you@example.com"
-        style={{ width: "100%", height: 38, borderRadius: 7, border: `1.5px solid ${error ? C.red700 : C.border}`, background: C.fog, padding: "0 12px", fontSize: 12.5, color: C.navy, outline: "none", boxSizing: "border-box", marginBottom: error ? 4 : 18 }}
-      />
-      {error && <div style={{ fontSize: 10.5, color: C.red700, marginBottom: 14 }}>{error}</div>}
-
-      <button
-        onClick={submit}
-        style={{ width: "100%", height: 42, background: C.red700, color: C.white, border: "none", borderRadius: 9, fontSize: 13.5, fontWeight: 700, cursor: "pointer", letterSpacing: "-0.1px" }}
-      >
-        Send reset link
+      <button onClick={onBack} style={{ width: "100%", height: 40, background: C.fog, color: C.navy, border: `1px solid ${C.border}`, borderRadius: 9, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
+        ← Back to sign in
       </button>
-
-      <div style={{ textAlign: "center", marginTop: 16, fontSize: 11.5 }}>
-        <span onClick={onBack} style={{ color: C.blue, cursor: "pointer" }}>← Back to sign in</span>
-      </div>
     </CardShell>
   );
 }
@@ -177,10 +115,8 @@ function StatusBanner({ status, reason }) {
 }
 
 export default function Login({ onLogin }) {
-  // Keeps track of everything typed into the form and which role tab
-  // is currently selected.
-  const [role, setRole] = useState("Hospital Admin");
-  const [email, setEmail] = useState(roleEmails["Hospital Admin"]);
+  // Keeps track of everything typed into the form.
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({});
   const [view, setView] = useState("signin"); // "signin" | "forgot"
@@ -188,14 +124,6 @@ export default function Login({ onLogin }) {
   // account is PENDING or REJECTED (see AccountApprovalController on the
   // backend and postJson()'s accountStatus/accountReason handling below).
   const [blocked, setBlocked] = useState(null);
-
-  // Runs when the user clicks one of the role buttons ("I'm a...").
-  function selectRole(r) {
-    setRole(r);
-    setEmail(roleEmails[r]);
-    setErrors({});
-    setBlocked(null);
-  }
 
   // True while we're waiting for the backend to respond, so we can
   // disable the button and avoid double-submits.
@@ -224,7 +152,7 @@ export default function Login({ onLogin }) {
 
       // The backend returns a role like "HOSPITAL_ADMIN" - translate it
       // into the display name ("Hospital Admin") the rest of the app uses.
-      const displayRole = BACKEND_ROLE_TO_DISPLAY[result.role] || role;
+      const displayRole = BACKEND_ROLE_TO_DISPLAY[result.role];
       onLogin(displayRole);
     } catch (err) {
       if (err.accountStatus) {
@@ -252,32 +180,13 @@ export default function Login({ onLogin }) {
           <div style={{ fontSize: 13, color: C.gray, marginBottom: 6 }}>Welcome back</div>
           <div style={{ fontSize: 21, fontWeight: 700, color: C.navy, marginBottom: 22, letterSpacing: "-0.3px" }}>Sign in to your account</div>
 
-          <div style={{ fontSize: 11, fontWeight: 600, color: C.slate, marginBottom: 9, textTransform: "uppercase", letterSpacing: "0.05em" }}>I'm a...</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 20 }}>
-            {roles.map(r => (
-              <button key={r} type="button" onClick={() => selectRole(r)} style={{
-                padding: "9px 13px", borderRadius: 9, cursor: "pointer", textAlign: "left",
-                border: `1.5px solid ${role === r ? C.red700 : C.border}`,
-                background: role === r ? "#FFF5F6" : C.white,
-                display: "flex", alignItems: "center", gap: 11, transition: "border-color 0.12s",
-              }}>
-                <div style={{ width: 15, height: 15, borderRadius: "50%", border: `2px solid ${role === r ? C.red700 : C.silver}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  {role === r && <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.red700 }} />}
-                </div>
-                <div>
-                  <div style={{ fontSize: 12.5, fontWeight: role === r ? 600 : 400, color: role === r ? C.navy : C.slate }}>{r}</div>
-                  <div style={{ fontSize: 10.5, color: C.gray, marginTop: 1 }}>{roleHints[r]}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-
           {blocked && <StatusBanner status={blocked.status} reason={blocked.reason} />}
 
           <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: C.slate, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em" }}>Email</label>
           <input
             value={email}
             onChange={e => { setEmail(e.target.value); if (errors.email) setErrors(er => ({ ...er, email: undefined })); setBlocked(null); }}
+            placeholder="you@example.com"
             style={{ width: "100%", height: 38, borderRadius: 7, border: `1.5px solid ${errors.email ? C.red700 : C.border}`, background: C.fog, padding: "0 12px", fontSize: 12.5, color: C.navy, outline: "none", boxSizing: "border-box", marginBottom: errors.email ? 4 : 14 }}
           />
           {errors.email && <div style={{ fontSize: 10.5, color: C.red700, marginBottom: 10 }}>{errors.email}</div>}
@@ -291,8 +200,6 @@ export default function Login({ onLogin }) {
             style={{ width: "100%", height: 38, borderRadius: 7, border: `1.5px solid ${errors.password ? C.red700 : C.border}`, background: C.fog, padding: "0 12px", fontSize: 12.5, color: C.navy, outline: "none", boxSizing: "border-box" }}
           />
           {errors.password && <div style={{ fontSize: 10.5, color: C.red700, marginTop: 5 }}>{errors.password}</div>}
-          {/* Demo accounts are auto-created by the backend (see DemoDataSeeder.java) - this reminds you what to type. */}
-          <div style={{ fontSize: 10, color: C.gray, marginTop: 5 }}>Demo password for all quick-pick accounts: {DEMO_PASSWORD}</div>
 
           <div style={{ textAlign: "right", marginTop: 6, marginBottom: 18 }}>
             <span onClick={() => setView("forgot")} style={{ fontSize: 11, color: C.blue, cursor: "pointer" }}>Forgot password?</span>
