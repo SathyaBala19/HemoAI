@@ -2,12 +2,13 @@
 //
 // This is the "brain" of the whole frontend - it decides which screen to
 // show based on the URL (using react-router-dom) and which role the user
-// logged in as. It doesn't talk to any backend yet - roleKey is just kept
-// in memory with useState, so refreshing the page logs you out.
+// logged in as. roleKey is restored from the saved session (localStorage)
+// on load, so refreshing the page keeps you logged in.
 import { useState } from "react";
 import { Routes, Route, Navigate, useNavigate, useParams } from "react-router-dom";
 import { C } from "./tokens";
-import { ROLES, SCREEN_META } from "./roles";
+import { ROLES, SCREEN_META, BACKEND_ROLE_TO_DISPLAY } from "./roles";
+import { getStoredUser, getToken, clearSession } from "./api";
 import Sidebar from "./components/shared/Sidebar";
 import TopBar from "./components/shared/TopBar";
 import Landing from "./components/screens/Landing";
@@ -200,18 +201,29 @@ function AppShell({ roleKey, onLogout }) {
   );
 }
 
+// Reads the saved session (if any) and turns its backend role string
+// (e.g. "DONOR") into the roleKey this app uses internally, which is
+// actually the display name (e.g. "Donor") - see ROLES in roles.js.
+function initialRoleKey() {
+  const token = getToken();
+  const user = getStoredUser();
+  if (!token || !user?.role) return null;
+  const displayName = BACKEND_ROLE_TO_DISPLAY[user.role];
+  return displayName && ROLES[displayName] ? displayName : null;
+}
+
 // The top-level component. It just declares the URL routes and which
-// component handles each one. roleKey holds "who is logged in right now"
-// - it's plain React state, so it resets whenever the page is refreshed.
+// component handles each one. roleKey holds "who is logged in right now",
+// restored from localStorage on load so a page refresh doesn't log you out.
 export default function App() {
-  const [roleKey, setRoleKey] = useState(null);
+  const [roleKey, setRoleKey] = useState(initialRoleKey);
 
   return (
     <Routes>
       <Route path="/" element={<LandingRoute />} />
       <Route path="/login" element={<LoginRoute onLogin={setRoleKey} />} />
       <Route path="/register" element={<PublicRegisterRoute />} />
-      <Route path="/app/:page" element={<AppShell roleKey={roleKey} onLogout={() => setRoleKey(null)} />} />
+      <Route path="/app/:page" element={<AppShell roleKey={roleKey} onLogout={() => { clearSession(); setRoleKey(null); }} />} />
       {/* Any URL that doesn't match the routes above sends the user home. */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
