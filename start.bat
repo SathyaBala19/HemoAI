@@ -2,14 +2,15 @@
 REM ============================================================
 REM  start.bat - launches the whole HemoAI project in one go
 REM
-REM  This starts 7 things, each in its own window:
+REM  This starts 8 things, each in its own window:
 REM    1. auth-service       (Spring Boot, port 8081)
 REM    2. employee-service   (Spring Boot, port 8082)
 REM    3. inventory-service  (Spring Boot, port 8083)
 REM    4. donation-service   (Spring Boot, port 8084)
-REM    5. chatbot-service    (Spring Boot, port 8085)
-REM    6. ml-service         (Python/Flask, port 8086)
-REM    7. frontend           (Vite dev server, usually port 5173)
+REM    5. Ollama             (ollama serve, port 11434 - only if installed)
+REM    6. chatbot-service    (Spring Boot, port 8085)
+REM    7. ml-service         (Python/Flask, port 8086)
+REM    8. frontend           (Vite dev server, usually port 5173)
 REM
 REM  Requirements before running this:
 REM    - MySQL running locally (root / omen, matches application.properties)
@@ -19,9 +20,10 @@ REM    - Java + Maven installed
 REM    - Node.js + npm installed
 REM    - Python + pip installed, with ml-service's dependencies installed
 REM      once via: pip install -r ml-service\requirements.txt
-REM    - Ollama installed and running (ollama serve) with a model pulled,
-REM      e.g. "ollama pull llama3.2" - needed for the Chatbot screen only,
-REM      everything else works fine without it.
+REM    - Ollama installed with a model pulled once, e.g.
+REM      "ollama pull llama3.2" - this script starts "ollama serve" for you
+REM      if it's on PATH and not already running. Needed for the Chatbot
+REM      screen only, everything else works fine without it.
 REM
 REM  Just double-click this file, or run "start.bat" from a terminal.
 REM ============================================================
@@ -37,6 +39,10 @@ REM with "Unable to rename ...jar.original" - mvn can't overwrite a jar
 REM that's currently running. Free the ports first so rebuilds never
 REM collide with a live instance from last time.
 echo Freeing ports from any previous run...
+REM Deliberately NOT touching 11434 (Ollama) here - it's not rebuilt like
+REM the Java services, so if it's already running we want to reuse it
+REM (see the Ollama check further down) rather than kill+relaunch it and
+REM force a model reload on every script run.
 for %%P in (8081 8082 8083 8084 8085 8086 5173) do (
     for /f "tokens=5" %%A in ('netstat -ano ^| findstr ":%%P " ^| findstr LISTENING') do (
         taskkill /PID %%A /F >nul 2>&1
@@ -100,6 +106,28 @@ REM --- 5. Start donation-service in its own window (port 8084) ---
 echo Launching donation-service on port 8084...
 start "HemoAI - donation-service" cmd /k "cd /d "%ROOT%backend\donation-service" && java -jar target\donation-service.jar"
 
+REM --- 5a. Make sure Ollama is running before chatbot-service needs it ---
+REM chatbot-service just proxies to Ollama's local API (localhost:11434) -
+REM it doesn't launch Ollama itself. Without this, chatbot-service starts
+REM fine but the Chatbot screen fails as soon as someone sends a message.
+REM Checking the port instead of "ollama ps"/tasklist so this doesn't care
+REM whether Ollama is running as a background service or a plain process.
+echo Checking Ollama...
+for /f "tokens=5" %%A in ('netstat -ano ^| findstr ":11434 " ^| findstr LISTENING') do set OLLAMA_RUNNING=1
+if defined OLLAMA_RUNNING (
+    echo Ollama already running.
+) else (
+    where ollama >nul 2>&1
+    if errorlevel 1 (
+        echo WARNING: Ollama not found on PATH - install it from https://ollama.com
+        echo          and run "ollama pull llama3.2" once. The Chatbot screen won't
+        echo          work until Ollama is installed and running.
+    ) else (
+        echo Launching Ollama...
+        start "HemoAI - ollama" cmd /k "ollama serve"
+    )
+)
+
 REM --- 5b. Start chatbot-service in its own window (port 8085) ---
 echo Launching chatbot-service on port 8085...
 start "HemoAI - chatbot-service" cmd /k "cd /d "%ROOT%backend\chatbot-service" && java -jar target\chatbot-service.jar"
@@ -147,12 +175,13 @@ echo Opening http://localhost:5173 in your browser now...
 powershell -NoProfile -Command "Start-Process 'http://localhost:5173'"
 
 echo.
-echo All seven services are starting in their own windows:
+echo All services are starting in their own windows:
 echo   - auth-service      : http://localhost:8081
 echo   - employee-service  : http://localhost:8082
 echo   - inventory-service : http://localhost:8083
 echo   - donation-service  : http://localhost:8084
-echo   - chatbot-service   : http://localhost:8085  (needs Ollama running separately)
+echo   - Ollama            : http://localhost:11434 (auto-started if it was on PATH)
+echo   - chatbot-service   : http://localhost:8085
 echo   - ml-service        : http://localhost:8086
 echo   - frontend          : http://localhost:5173  (check the frontend window for the exact URL)
 echo.
