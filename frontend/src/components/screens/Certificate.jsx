@@ -10,6 +10,7 @@ import jsPDF from "jspdf";
 import QRCode from "qrcode";
 import { C } from "../../tokens";
 import { Card } from "../shared/UI";
+import DropletIcon from "../shared/DropletIcon";
 import { listMyDonations, getToken, getStoredUser } from "../../api";
 
 export default function Certificate() {
@@ -89,7 +90,7 @@ export default function Certificate() {
           <div style={{ background: C.white, borderRadius: 10, border: `1.5px solid #E8CC7044` }}>
             {/* Header */}
             <div style={{ background: C.red700, padding: "14px 22px", display: "flex", alignItems: "center", gap: 11 }}>
-              <div style={{ width: 26, height: 26, borderRadius: 6, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, color: C.white, border: "1px solid rgba(255,255,255,0.25)" }}>H</div>
+              <div style={{ width: 26, height: 26, borderRadius: 6, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,0.25)" }}><DropletIcon size={13} /></div>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: C.white, letterSpacing: "-0.2px" }}>HemoAI Blood Bank Platform</div>
                 <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.7)" }}>Coimbatore District Health Department</div>

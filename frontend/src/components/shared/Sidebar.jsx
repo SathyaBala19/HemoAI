@@ -1,4 +1,5 @@
 import { C } from "../../tokens";
+import DropletIcon from "./DropletIcon";
 
 function NavItem({ item, active, onClick }) {
   return (
@@ -42,7 +43,7 @@ export default function Sidebar({ active, onNavigate, mainNav, donorNav, user })
     }}>
       {/* Logo — slightly off-centre padding to feel human */}
       <div style={{ padding: "18px 16px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ width: 29, height: 29, borderRadius: 7, background: C.red700, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, color: C.white, letterSpacing: "-0.5px", flexShrink: 0 }}>H</div>
+        <div style={{ width: 29, height: 29, borderRadius: 7, background: C.red700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><DropletIcon size={15} /></div>
         <div>
           <div style={{ fontSize: 14, fontWeight: 700, color: C.white, letterSpacing: "-0.2px" }}>HemoAI</div>
           <div style={{ fontSize: 9.5, color: "#5C6480", marginTop: 1 }}>Blood Bank Platform</div>

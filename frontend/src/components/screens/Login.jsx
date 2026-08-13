@@ -10,6 +10,7 @@
 // in roles.js) and is used to route to the right dashboard.
 import { useState } from "react";
 import { C } from "../../tokens";
+import DropletIcon from "../shared/DropletIcon";
 import { loginUser, saveSession } from "../../api";
 import { BACKEND_ROLE_TO_DISPLAY } from "../../roles";
 
@@ -26,7 +27,7 @@ function BrandPanel() {
       <div style={{ position: "absolute", bottom: 40, right: -60, width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,121,240,0.1) 0%, transparent 70%)", pointerEvents: "none" }} />
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, position: "relative" }}>
-        <div style={{ width: 36, height: 36, borderRadius: 9, background: C.red700, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 17, color: C.white }}>H</div>
+        <div style={{ width: 36, height: 36, borderRadius: 9, background: C.red700, display: "flex", alignItems: "center", justifyContent: "center" }}><DropletIcon size={19} /></div>
         <div>
           <div style={{ fontSize: 18, fontWeight: 700, color: C.white, letterSpacing: "-0.3px" }}>HemoAI</div>
           <div style={{ fontSize: 10, color: "#5C6480" }}>Blood Bank Platform</div>
