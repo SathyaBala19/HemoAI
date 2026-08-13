@@ -154,11 +154,24 @@ if %errorlevel%==0 (
 echo Launching ml-service on port 8086...
 start "HemoAI - ml-service" cmd /k "cd /d "%ROOT%ml-service" && python app.py"
 
-REM --- 6. Install frontend dependencies the first time, then start it ---
+REM --- 6. Install frontend dependencies if missing or out of date ---
 REM The frontend's package.json/src live directly under frontend\ now
 REM (it used to be nested under frontend\hemoai\ - moved since).
-if not exist "%ROOT%frontend\node_modules" (
-    echo Installing frontend dependencies - this can take a minute on first run...
+REM
+REM Just checking "does node_modules exist" isn't enough - on an existing
+REM checkout, pulling new code that added a dependency (e.g. leaflet,
+REM html2canvas, jsPDF) would leave node_modules present but missing the
+REM new package, and the app would only fail at runtime with an import
+REM error. Spot-check a few packages that were added after this project's
+REM initial setup as a proxy for "node_modules matches package.json".
+set NEEDS_INSTALL=0
+if not exist "%ROOT%frontend\node_modules" set NEEDS_INSTALL=1
+if not exist "%ROOT%frontend\node_modules\leaflet" set NEEDS_INSTALL=1
+if not exist "%ROOT%frontend\node_modules\html2canvas" set NEEDS_INSTALL=1
+if not exist "%ROOT%frontend\node_modules\jspdf" set NEEDS_INSTALL=1
+
+if "%NEEDS_INSTALL%"=="1" (
+    echo Installing frontend dependencies - this can take a minute...
     call npm install --prefix "%ROOT%frontend"
     echo Frontend dependencies installed.
 ) else (
