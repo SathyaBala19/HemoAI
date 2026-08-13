@@ -1,4 +1,5 @@
 import { C } from "../../tokens";
+import DropletIcon from "../shared/DropletIcon";
 
 function IconTrendingUp({ color }) {
   return (
@@ -43,10 +44,15 @@ const STEPS = [
 ];
 
 function NavBar({ onSignIn }) {
+  // Matches the hero content block's maxWidth (760, see the hero <div>
+  // below) rather than the wider 1000 used by the Features/CTA sections
+  // further down - so the logo and Sign in button line up with the
+  // headline/buttons directly beneath them instead of sitting further
+  // out to the sides.
   return (
-    <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 48px", position: "relative", zIndex: 2 }}>
+    <div style={{ maxWidth: 760, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 48px", position: "relative", zIndex: 2 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 34, height: 34, borderRadius: 9, background: C.red700, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 16, color: C.white }}>H</div>
+        <div style={{ width: 34, height: 34, borderRadius: 9, background: C.red700, display: "flex", alignItems: "center", justifyContent: "center" }}><DropletIcon size={18} /></div>
         <div style={{ fontSize: 17, fontWeight: 700, color: C.white, letterSpacing: "-0.3px" }}>HemoAI</div>
       </div>
       <button

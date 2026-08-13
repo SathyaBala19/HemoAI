@@ -11,6 +11,7 @@ import { ROLES, SCREEN_META, BACKEND_ROLE_TO_DISPLAY } from "./roles";
 import { getStoredUser, getToken, clearSession } from "./api";
 import Sidebar from "./components/shared/Sidebar";
 import TopBar from "./components/shared/TopBar";
+import DropletIcon from "./components/shared/DropletIcon";
 import Landing from "./components/screens/Landing";
 import Login from "./components/screens/Login";
 import Dashboard from "./components/screens/Dashboard";
@@ -102,7 +103,7 @@ function PublicRegisterRoute() {
         display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 24px",
       }}>
         <div onClick={() => navigate("/")} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-          <div style={{ width: 28, height: 28, borderRadius: 7, background: C.red700, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: C.white }}>H</div>
+          <div style={{ width: 28, height: 28, borderRadius: 7, background: C.red700, display: "flex", alignItems: "center", justifyContent: "center" }}><DropletIcon size={14} /></div>
           <span style={{ fontSize: 14, fontWeight: 700, color: C.navy, letterSpacing: "-0.2px" }}>HemoAI</span>
         </div>
         <span onClick={() => navigate("/login")} style={{ fontSize: 12, color: C.blue, cursor: "pointer", fontWeight: 600 }}>
