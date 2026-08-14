@@ -4,7 +4,7 @@
 // show based on the URL (using react-router-dom) and which role the user
 // logged in as. roleKey is restored from the saved session (localStorage)
 // on load, so refreshing the page keeps you logged in.
-import { useState } from "react";
+import { useState, Suspense, lazy } from "react";
 import { Routes, Route, Navigate, useNavigate, useParams } from "react-router-dom";
 import { C } from "./tokens";
 import { ROLES, SCREEN_META, BACKEND_ROLE_TO_DISPLAY } from "./roles";
@@ -12,26 +12,29 @@ import { getStoredUser, getToken, clearSession } from "./api";
 import Sidebar from "./components/shared/Sidebar";
 import TopBar from "./components/shared/TopBar";
 import DropletIcon from "./components/shared/DropletIcon";
+// Landing and Login are on the critical path (first thing most visitors see),
+// so they stay as normal imports. Everything else loads on demand - this
+// keeps the initial JS bundle small instead of shipping every screen upfront.
 import Landing from "./components/screens/Landing";
 import Login from "./components/screens/Login";
-import Dashboard from "./components/screens/Dashboard";
-import Inventory from "./components/screens/Inventory";
-import DonorMap from "./components/screens/DonorMap";
-import Forecast from "./components/screens/Forecast";
-import Chatbot from "./components/screens/Chatbot";
-import Alerts from "./components/screens/Alerts";
-import Reports from "./components/screens/Reports";
-import DonorReg from "./components/screens/DonorReg";
-import BloodBank from "./components/screens/BloodBank";
-import DHO from "./components/screens/DHO";
-import DonorProfile from "./components/screens/DonorProfile";
-import DonationHistory from "./components/screens/DonationHistory";
-import Certificate from "./components/screens/Certificate";
-import HospitalReg from "./components/screens/HospitalReg";
-import BloodBankReg from "./components/screens/BloodBankReg";
-import DHOReg from "./components/screens/DHOReg";
-import PendingApprovals from "./components/screens/PendingApprovals";
-import StaffManagement from "./components/screens/StaffManagement";
+const Dashboard         = lazy(() => import("./components/screens/Dashboard"));
+const Inventory         = lazy(() => import("./components/screens/Inventory"));
+const DonorMap          = lazy(() => import("./components/screens/DonorMap"));
+const Forecast          = lazy(() => import("./components/screens/Forecast"));
+const Chatbot           = lazy(() => import("./components/screens/Chatbot"));
+const Alerts            = lazy(() => import("./components/screens/Alerts"));
+const Reports           = lazy(() => import("./components/screens/Reports"));
+const DonorReg          = lazy(() => import("./components/screens/DonorReg"));
+const BloodBank         = lazy(() => import("./components/screens/BloodBank"));
+const DHO               = lazy(() => import("./components/screens/DHO"));
+const DonorProfile      = lazy(() => import("./components/screens/DonorProfile"));
+const DonationHistory   = lazy(() => import("./components/screens/DonationHistory"));
+const Certificate       = lazy(() => import("./components/screens/Certificate"));
+const HospitalReg       = lazy(() => import("./components/screens/HospitalReg"));
+const BloodBankReg      = lazy(() => import("./components/screens/BloodBankReg"));
+const DHOReg            = lazy(() => import("./components/screens/DHOReg"));
+const PendingApprovals  = lazy(() => import("./components/screens/PendingApprovals"));
+const StaffManagement   = lazy(() => import("./components/screens/StaffManagement"));
 
 // Maps a screen "key" (used in the URL, like /app/dashboard) to the
 // actual React component that should be rendered for it.
@@ -132,7 +135,9 @@ function PublicRegisterRoute() {
       </div>
 
       <div style={{ padding: "0 24px 24px", maxWidth: 1100, margin: "0 auto" }}>
-        <ActiveForm />
+        <Suspense fallback={null}>
+          <ActiveForm />
+        </Suspense>
       </div>
     </div>
   );
@@ -207,7 +212,9 @@ function AppShell({ roleKey, onLogout }) {
           onLogout={() => handleNavigate("__logout__")}
         />
         <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
-          <SafeComponent role={roleKey} onNavigate={handleNavigate} />
+          <Suspense fallback={null}>
+            <SafeComponent role={roleKey} onNavigate={handleNavigate} />
+          </Suspense>
         </div>
       </div>
     </div>
