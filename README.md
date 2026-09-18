@@ -60,7 +60,3 @@ python app.py     # http://localhost:8086
 
 See [ECLIPSE_SETUP.md](ECLIPSE_SETUP.md) for importing the five Maven
 services, the frontend, and ml-service as separate Eclipse projects.
-
-## Docs
-
-Requirements and design documentation live in [docs/](docs/).
