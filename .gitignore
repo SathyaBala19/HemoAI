@@ -26,3 +26,7 @@ Thumbs.db
 # Secrets — never commit these
 *.env
 application-secrets.yml
+
+# Claude Code
+.claude/
+Claude outputs/
