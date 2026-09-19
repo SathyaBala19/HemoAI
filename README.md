@@ -4,6 +4,22 @@ A blood bank management platform: a React frontend backed by five Spring Boot
 microservices (auth, employee, inventory, donation, chatbot) plus a Python
 ML service that forecasts donation demand.
 
+## Features
+
+- **Role-based accounts** for donors, blood banks, hospitals, and district
+  health officers (DHOs), with new blood bank/hospital registrations held in
+  a pending-approval queue before going live
+- **Inventory tracking** per blood group per bank, with low-stock alerts
+- **Donor map** (Leaflet) showing nearby blood banks and donors
+- **Donation history** per donor, with PDF donation certificates
+  (jsPDF + html2canvas)
+- **Demand forecasting**: a `LinearRegression` model per blood group,
+  trained on real donation history, predicts next week's donations
+- **Chatbot** for natural-language queries, backed by a locally-run Ollama
+  model (keeps data self-hosted)
+- **Staff management and reports** for blood banks, plus a district-wide
+  oversight view for DHOs
+
 ## Quick start (Windows)
 
 ```bash
@@ -63,4 +79,6 @@ services, the frontend, and ml-service as separate Eclipse projects.
 
 ## Docs
 
-Requirements and design documentation live in [docs/](docs/).
+Requirements and design documentation live in [docs/](docs/), including a
+[demo video script](docs/video_script.md) for recording a walkthrough of the
+platform.
