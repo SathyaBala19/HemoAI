@@ -30,3 +30,6 @@ application-secrets.yml
 # Claude Code
 .claude/
 Claude outputs/
+
+# Docs (kept locally, not in repo)
+docs/
