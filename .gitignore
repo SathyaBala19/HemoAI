@@ -33,3 +33,5 @@ Claude outputs/
 
 # Docs (kept locally, not in repo)
 docs/
+db-backup/
+mongo-backup/

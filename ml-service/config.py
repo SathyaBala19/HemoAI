@@ -10,13 +10,13 @@ import os
 DB_HOST = os.environ.get("DB_HOST", "localhost")
 DB_PORT = int(os.environ.get("DB_PORT", "3306"))
 DB_USER = os.environ.get("DB_USERNAME", "root")
-DB_PASSWORD = os.environ.get("DB_PASSWORD", "omen")
+DB_PASSWORD = os.environ["DB_PASSWORD"]
 DB_NAME = os.environ.get("DB_NAME", "donation_service_db")
 
 # Must be exactly the same secret auth-service signs JWTs with (see
 # app.jwt.secret in the Java services' application.properties) - that's
 # what lets this service verify a token it never issued.
-JWT_SECRET = os.environ.get("JWT_SECRET", "ChangeThisToARandom256BitSecretKeySharedByBothServices")
+JWT_SECRET = os.environ["JWT_SECRET"]
 
 PORT = int(os.environ.get("PORT", "8086"))
 
