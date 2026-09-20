@@ -1,0 +1,132 @@
+services:
+  auth-service:
+    build:
+      context: ./backend/auth-service
+    image: hemoai-auth
+    container_name: hemoai-auth-container
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: mysql
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - mysql
+
+  employee-service:
+    build:
+      context: ./backend/employee-service
+    image: hemoai-employee
+    container_name: hemoai-employee-container
+    ports:
+      - "8082:8082"
+    environment:
+      DB_HOST: mysql
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - mysql
+
+  inventory-service:
+    build:
+      context: ./backend/inventory-service
+    image: hemoai-inventory
+    container_name: hemoai-inventory-container
+    ports:
+      - "8083:8083"
+    environment:
+      DB_HOST: mysql
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - mysql
+
+  donation-service:
+    build:
+      context: ./backend/donation-service
+    image: hemoai-donation
+    container_name: hemoai-donation-container
+    ports:
+      - "8084:8084"
+    environment:
+      DB_HOST: mysql
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - mysql
+
+  chatbot-service:
+    build:
+      context: ./backend/chatbot-service
+    image: hemoai-chatbot
+    container_name: hemoai-chatbot-container
+    ports:
+      - "8085:8085"
+    environment:
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: llama3.2
+      INVENTORY_BASE_URL: http://inventory-service:8083
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - inventory-service
+
+  ml-service:
+    build:
+      context: ./ml-service
+    image: hemoai-ml
+    container_name: hemoai-ml-container
+    ports:
+      - "8086:8086"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: donation_service_db
+      JWT_SECRET: ${JWT_SECRET}
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB_NAME: ml_service_db
+    depends_on:
+      - mysql
+      - mongo
+
+  frontend:
+    build:
+      context: ./frontend
+    image: hemoai-frontend
+    container_name: hemoai-frontend-container
+    ports:
+      - "5173:80"
+    depends_on:
+      - auth-service
+      - employee-service
+      - inventory-service
+      - donation-service
+      - chatbot-service
+      - ml-service
+
+  mysql:
+    image: mysql:8.0
+    container_name: hemoai-mysql-container
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  mongo:
+    image: mongo:7.0
+    container_name: hemoai-mongo-container
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mysql-data:
+  mongo-data:

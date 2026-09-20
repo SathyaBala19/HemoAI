@@ -10,14 +10,31 @@
 // for any of this to work - start.bat in the project root starts it
 // automatically along with everything else.
 
-const AUTH_HOST = "http://localhost:8081";
+const AUTH_HOST =
+  import.meta.env.VITE_AUTH_URL || "http://localhost:8081";
+
+const EMPLOYEE_HOST =
+  import.meta.env.VITE_EMPLOYEE_URL || "http://localhost:8082";
+
+const INVENTORY_HOST =
+  import.meta.env.VITE_INVENTORY_URL || "http://localhost:8083";
+
+const DONATION_HOST =
+  import.meta.env.VITE_DONATION_URL || "http://localhost:8084";
+
+const CHATBOT_HOST =
+  import.meta.env.VITE_CHATBOT_URL || "http://localhost:8085";
+
+const ML_HOST =
+  import.meta.env.VITE_ML_URL || "http://localhost:8086";
+
 const AUTH_BASE_URL = `${AUTH_HOST}/api/auth`;
 const USERS_BASE_URL = `${AUTH_HOST}/api/users`;
-const EMPLOYEE_BASE_URL = "http://localhost:8082/api/employees";
-const INVENTORY_BASE_URL = "http://localhost:8083/api/inventory";
-const DONATION_BASE_URL = "http://localhost:8084/api/donations";
-const CHATBOT_BASE_URL = "http://localhost:8085/api/chatbot";
-const ML_BASE_URL = "http://localhost:8086/api";
+const EMPLOYEE_BASE_URL = `${EMPLOYEE_HOST}/api/employees`;
+const INVENTORY_BASE_URL = `${INVENTORY_HOST}/api/inventory`;
+const DONATION_BASE_URL = `${DONATION_HOST}/api/donations`;
+const CHATBOT_BASE_URL = `${CHATBOT_HOST}/api/chatbot`;
+const ML_BASE_URL = `${ML_HOST}/api`;
 
 // Small helper so every function below doesn't have to repeat the same
 // fetch + error-handling boilerplate.
