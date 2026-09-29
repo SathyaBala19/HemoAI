@@ -20,6 +20,8 @@ JWT_SECRET = os.environ["JWT_SECRET"]
 
 PORT = int(os.environ.get("PORT", "8086"))
 
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+
 # MongoDB - stores a log of each forecast call (who asked, when, what came
 # back). Separate from donation-service's MySQL data: this is unstructured,
 # append-only history, not core relational data, so it doesn't belong there.

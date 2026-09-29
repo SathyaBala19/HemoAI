@@ -18,8 +18,10 @@ from model import predict_next_week
 app = Flask(__name__)
 
 # Same idea as the CORS beans in the Java services' SecurityConfig -
-# lets the Vite dev server (localhost:5173) call this API from the browser.
-CORS(app, origins=["http://localhost:5173"])
+# lets the frontend call this API from the browser. Defaults to the Vite
+# dev server; set FRONTEND_URL in any real deployment (comma-separated
+# for multiple origins).
+CORS(app, origins=config.FRONTEND_URL.split(","))
 
 
 @app.route("/api/forecast", methods=["GET"])

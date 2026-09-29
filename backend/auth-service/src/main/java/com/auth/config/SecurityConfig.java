@@ -1,6 +1,7 @@
 package com.auth.config;
 
 import com.auth.security.JwtAuthFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -16,6 +17,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 // This class tells Spring Security how to protect our API.
@@ -27,6 +29,12 @@ public class SecurityConfig {
 
     // Our custom filter that reads the JWT token from each request.
     private final JwtAuthFilter jwtAuthFilter;
+
+    // Comma-separated list of allowed frontend origins. Defaults to the
+    // Vite dev server for local work; set FRONTEND_URL in any real
+    // deployment to the frontend's actual public URL.
+    @Value("${FRONTEND_URL:http://localhost:5173}")
+    private String frontendUrl;
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
@@ -93,7 +101,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        config.setAllowedOrigins(Arrays.asList(frontendUrl.split(",")));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
 
